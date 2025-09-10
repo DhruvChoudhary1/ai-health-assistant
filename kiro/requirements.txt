@@ -17,4 +17,4 @@ torch==2.1.0
 pytest==7.4.3
 pytest-asyncio==0.21.1
 python-telegram-bot==20.3
-deep-translator
+deep-translator 
