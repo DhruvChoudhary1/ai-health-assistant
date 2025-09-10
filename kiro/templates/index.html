@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Health Chatbot</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-heartbeat"></i>
+                    <h1>AI Health Assistant</h1>
+                </div>
+                <div class="language-selector">
+                    <select id="languageSelect">
+                        <option value="en">🇺🇸 English</option>
+                        <option value="hi">🇮🇳 हिंदी</option>
+                        <option value="es">🇪🇸 Español</option>
+                        <option value="fr">🇫🇷 Français</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="chat-container">
+                <div class="chat-header">
+                    <div class="status-indicator">
+                        <span class="status-dot online"></span>
+                        <span>AI Assistant Online</span>
+                    </div>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message bot-message">
+                        <div class="message-avatar">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="message-content">
+                            <p>Hello! I'm your AI Health Assistant. I can help you with health-related questions, provide information about medical conditions, and offer general wellness advice.</p>
+                            <p><strong>Please note:</strong> I provide educational information only. Always consult healthcare professionals for medical advice.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-container">
+                    <div class="input-wrapper">
+                        <input type="text" id="messageInput" placeholder="Ask me about your health concerns..." maxlength="500">
+                        <button id="sendButton" class="send-button">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                    <div class="input-info">
+                        <span class="char-count">0/500</span>
+                        <span class="typing-indicator" id="typingIndicator" style="display: none;">
+                            <i class="fas fa-circle"></i>
+                            <i class="fas fa-circle"></i>
+                            <i class="fas fa-circle"></i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-info-circle"></i> Quick Tips</h3>
+                    <ul class="tips-list">
+                        <li>Ask about symptoms, conditions, or treatments</li>
+                        <li>Get information about healthy lifestyle choices</li>
+                        <li>Learn about preventive care measures</li>
+                        <li>Understand medication basics</li>
+                    </ul>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3><i class="fab fa-telegram-plane"></i> Telegram Integration</h3>
+                    <p>You can also chat with me on Telegram!</p>
+                    <a href="https://t.me/dr_haathi_bot" target="_blank" class="telegram-button">
+                        <i class="fab fa-telegram-plane"></i>
+                        Chat on Telegram
+                    </a>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-shield-alt"></i> Privacy & Safety</h3>
+                    <ul class="safety-list">
+                        <li>Your conversations are not stored</li>
+                        <li>No personal health data is collected</li>
+                        <li>Always verify information with professionals</li>
+                    </ul>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Loading Modal -->
+    <div class="modal" id="loadingModal">
+        <div class="modal-content">
+            <div class="loading-spinner"></div>
+            <p>Processing your question...</p>
+        </div>
+    </div>
+    <!-- Telegram button is already present in the sidebar above with correct styling -->
+
+    <script src="/static/js/chat.js"></script>
+</body>
+</html>

@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Chatbot Widget</title>
+    <style>
+        /* Widget Container */
+        .health-chatbot-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            height: 500px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            z-index: 10000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .health-chatbot-widget.open {
+            display: flex;
+        }
+
+        /* Widget Toggle Button */
+        .widget-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 10001;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .widget-toggle:hover {
+            transform: scale(1.1);
+        }
+
+        .widget-toggle.hidden {
+            display: none;
+        }
+
+        /* Widget Header */
+        .widget-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .widget-title {
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .widget-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            transition: background 0.3s ease;
+        }
+
+        .widget-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Widget Messages */
+        .widget-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #f8fafc;
+        }
+
+        .widget-message {
+            max-width: 80%;
+            padding: 10px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .widget-message.bot {
+            background: white;
+            border: 1px solid #e1e5e9;
+            align-self: flex-start;
+        }
+
+        .widget-message.user {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            align-self: flex-end;
+        }
+
+        /* Widget Input */
+        .widget-input-container {
+            padding: 15px;
+            border-top: 1px solid #e1e5e9;
+            background: white;
+        }
+
+        .widget-input-wrapper {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .widget-input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #e1e5e9;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .widget-input:focus {
+            border-color: #667eea;
+        }
+
+        .widget-send {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease;
+        }
+
+        .widget-send:hover {
+            transform: scale(1.1);
+        }
+
+        .widget-send:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Language Selector */
+        .widget-language {
+            margin-bottom: 10px;
+        }
+
+        .widget-language select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 12px;
+            background: white;
+        }
+
+        /* Typing Indicator */
+        .widget-typing {
+            display: none;
+            align-items: center;
+            gap: 5px;
+            padding: 10px 12px;
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 12px;
+            align-self: flex-start;
+            font-size: 14px;
+            color: #64748b;
+        }
+
+        .widget-typing.show {
+            display: flex;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 2px;
+        }
+
+        .typing-dot {
+            width: 4px;
+            height: 4px;
+            background: #64748b;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-8px); }
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .health-chatbot-widget {
+                width: calc(100vw - 20px);
+                height: calc(100vh - 40px);
+                bottom: 10px;
+                right: 10px;
+            }
+            
+            .widget-toggle {
+                bottom: 10px;
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Widget Toggle Button -->
+    <button class="widget-toggle" id="widgetToggle">
+        💬
+    </button>
+
+    <!-- Widget Container -->
+    <div class="health-chatbot-widget" id="healthChatbotWidget">
+        <!-- Widget Header -->
+        <div class="widget-header">
+            <div class="widget-title">
+                🏥 Health Assistant
+            </div>
+            <button class="widget-close" id="widgetClose">
+                ×
+            </button>
+        </div>
+
+        <!-- Widget Messages -->
+        <div class="widget-messages" id="widgetMessages">
+            <div class="widget-message bot">
+                Hi! I'm your AI Health Assistant. Ask me about health conditions, symptoms, or wellness tips. 
+                <br><br><strong>Note:</strong> I provide educational information only. Consult healthcare professionals for medical advice.
+            </div>
+            
+            <!-- Typing Indicator -->
+            <div class="widget-typing" id="widgetTyping">
+                <span>AI is typing</span>
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Widget Input -->
+        <div class="widget-input-container">
+            <div class="widget-language">
+                <select id="widgetLanguage">
+                    <option value="en">🇺🇸 English</option>
+                    <option value="hi">🇮🇳 हिंदी</option>
+                    <option value="es">🇪🇸 Español</option>
+                    <option value="fr">🇫🇷 Français</option>
+                </select>
+            </div>
+            <div class="widget-input-wrapper">
+                <input type="text" class="widget-input" id="widgetInput" placeholder="Ask about your health..." maxlength="300">
+                <button class="widget-send" id="widgetSend">
+                    ➤
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class HealthChatbotWidget {
+            constructor(apiEndpoint = 'http://localhost:8000') {
+                this.apiEndpoint = apiEndpoint;
+                this.isOpen = false;
+                this.currentLanguage = 'en';
+                this.isProcessing = false;
+                
+                this.initializeElements();
+                this.initializeEventListeners();
+            }
+            
+            initializeElements() {
+                this.toggle = document.getElementById('widgetToggle');
+                this.widget = document.getElementById('healthChatbotWidget');
+                this.close = document.getElementById('widgetClose');
+                this.messages = document.getElementById('widgetMessages');
+                this.input = document.getElementById('widgetInput');
+                this.send = document.getElementById('widgetSend');
+                this.language = document.getElementById('widgetLanguage');
+                this.typing = document.getElementById('widgetTyping');
+            }
+            
+            initializeEventListeners() {
+                this.toggle.addEventListener('click', () => this.toggleWidget());
+                this.close.addEventListener('click', () => this.closeWidget());
+                this.send.addEventListener('click', () => this.sendMessage());
+                this.input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.sendMessage();
+                });
+                this.language.addEventListener('change', (e) => {
+                    this.currentLanguage = e.target.value;
+                });
+            }
+            
+            toggleWidget() {
+                if (this.isOpen) {
+                    this.closeWidget();
+                } else {
+                    this.openWidget();
+                }
+            }
+            
+            openWidget() {
+                this.widget.classList.add('open');
+                this.toggle.classList.add('hidden');
+                this.isOpen = true;
+                this.input.focus();
+            }
+            
+            closeWidget() {
+                this.widget.classList.remove('open');
+                this.toggle.classList.remove('hidden');
+                this.isOpen = false;
+            }
+            
+            async sendMessage() {
+                const message = this.input.value.trim();
+                if (!message || this.isProcessing) return;
+                
+                // Add user message
+                this.addMessage(message, 'user');
+                this.input.value = '';
+                
+                // Show typing indicator
+                this.showTyping();
+                this.setProcessing(true);
+                
+                try {
+                    const response = await fetch(`${this.apiEndpoint}/chat`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            language: this.currentLanguage
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    
+                    const data = await response.json();
+                    this.addMessage(data.response, 'bot');
+                    
+                } catch (error) {
+                    console.error('Error:', error);
+                    this.addMessage('Sorry, I\'m having trouble connecting. Please try again later.', 'bot');
+                } finally {
+                    this.hideTyping();
+                    this.setProcessing(false);
+                }
+            }
+            
+            addMessage(content, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `widget-message ${sender}`;
+                messageDiv.textContent = content;
+                
+                // Insert before typing indicator
+                this.messages.insertBefore(messageDiv, this.typing);
+                this.scrollToBottom();
+            }
+            
+            showTyping() {
+                this.typing.classList.add('show');
+                this.scrollToBottom();
+            }
+            
+            hideTyping() {
+                this.typing.classList.remove('show');
+            }
+            
+            setProcessing(processing) {
+                this.isProcessing = processing;
+                this.send.disabled = processing;
+                this.input.disabled = processing;
+            }
+            
+            scrollToBottom() {
+                setTimeout(() => {
+                    this.messages.scrollTop = this.messages.scrollHeight;
+                }, 100);
+            }
+        }
+        
+        // Initialize widget when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // You can customize the API endpoint here
+            const apiEndpoint = window.HEALTH_CHATBOT_API || 'http://localhost:8000';
+            new HealthChatbotWidget(apiEndpoint);
+        });
+    </script>
+</body>
+</html>

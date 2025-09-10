@@ -1,0 +1,65 @@
+[
+    {
+        "id": "diabetes_overview",
+        "title": "Diabetes Overview and Management",
+        "content": "Diabetes mellitus is a group of metabolic disorders characterized by high blood sugar levels over a prolonged period. Type 1 diabetes results from the pancreas's failure to produce enough insulin due to loss of beta cells. Type 2 diabetes begins with insulin resistance, a condition in which cells fail to respond to insulin properly. Gestational diabetes occurs in pregnant women without a previous history of diabetes. Common symptoms include frequent urination, increased thirst, increased appetite, and weight loss. Treatment involves lifestyle changes, medication, and insulin therapy when necessary. Regular monitoring of blood glucose levels is essential for effective management.",
+        "source": "American Diabetes Association Guidelines 2023",
+        "category": "endocrinology",
+        "url": "https://www.diabetes.org/diabetes",
+        "language": "en"
+    },
+    {
+        "id": "hypertension_management",
+        "title": "Hypertension: Prevention and Treatment",
+        "content": "Hypertension, or high blood pressure, is a common condition where the long-term force of blood against artery walls is high enough to eventually cause health problems. Normal blood pressure is less than 120/80 mmHg. Stage 1 hypertension is 130-139/80-89 mmHg, and Stage 2 is 140/90 mmHg or higher. Risk factors include age, family history, obesity, lack of physical activity, tobacco use, and excessive sodium intake. Lifestyle modifications include maintaining a healthy weight, regular exercise, limiting alcohol, reducing sodium intake, and managing stress. Medications may include ACE inhibitors, diuretics, beta-blockers, and calcium channel blockers.",
+        "source": "American Heart Association Guidelines 2023",
+        "category": "cardiology",
+        "url": "https://www.heart.org/en/health-topics/high-blood-pressure",
+        "language": "en"
+    },
+    {
+        "id": "mental_health_basics",
+        "title": "Mental Health: Understanding and Support",
+        "content": "Mental health includes emotional, psychological, and social well-being. It affects how we think, feel, and act, and helps determine how we handle stress, relate to others, and make choices. Common mental health conditions include depression, anxiety disorders, bipolar disorder, and schizophrenia. Warning signs may include eating or sleeping too much or too little, pulling away from people, having low energy, feeling numb, experiencing unexplained aches and pains, and thinking of harming yourself or others. Treatment options include therapy, medication, support groups, and lifestyle changes. It's important to seek professional help when symptoms interfere with daily life.",
+        "source": "National Institute of Mental Health 2023",
+        "category": "mental_health",
+        "url": "https://www.nimh.nih.gov/health/topics/mental-health-information",
+        "language": "en"
+    },
+    {
+        "id": "nutrition_guidelines",
+        "title": "Healthy Nutrition Guidelines",
+        "content": "A balanced diet provides the nutrients your body needs to function correctly. The key components include fruits, vegetables, whole grains, lean proteins, and healthy fats. The recommended daily intake includes 5-9 servings of fruits and vegetables, 6-8 servings of grains (half should be whole grains), 2-3 servings of lean protein, and 2-3 servings of dairy or calcium-rich alternatives. Limit saturated fats, trans fats, cholesterol, sodium, and added sugars. Stay hydrated by drinking plenty of water. Portion control is important - use smaller plates, eat slowly, and listen to hunger cues. Meal planning and preparation can help maintain healthy eating habits.",
+        "source": "Harvard School of Public Health Nutrition Guidelines 2023",
+        "category": "nutrition",
+        "url": "https://www.hsph.harvard.edu/nutritionsource/",
+        "language": "en"
+    },
+    {
+        "id": "exercise_benefits",
+        "title": "Physical Activity and Exercise Benefits",
+        "content": "Regular physical activity is one of the most important things you can do for your health. Benefits include weight control, reduced risk of cardiovascular disease, reduced risk of type 2 diabetes and metabolic syndrome, reduced risk of some cancers, strengthened bones and muscles, improved mental health and mood, improved ability to do daily activities, and increased chances of living longer. Adults should aim for at least 150 minutes of moderate-intensity aerobic activity or 75 minutes of vigorous-intensity aerobic activity per week, plus muscle-strengthening activities on 2 or more days per week. Start slowly and gradually increase activity level. Choose activities you enjoy to make it sustainable.",
+        "source": "CDC Physical Activity Guidelines 2023",
+        "category": "fitness",
+        "url": "https://www.cdc.gov/physicalactivity/basics/adults/index.htm",
+        "language": "en"
+    },
+    {
+        "id": "sleep_hygiene",
+        "title": "Sleep Hygiene and Health",
+        "content": "Good sleep is essential for physical health, mental health, and quality of life. Adults need 7-9 hours of sleep per night. Poor sleep is linked to weight gain, weakened immune system, diabetes, cardiovascular disease, and mental health issues. Sleep hygiene practices include maintaining a consistent sleep schedule, creating a comfortable sleep environment (cool, dark, quiet), avoiding caffeine and large meals before bedtime, limiting screen time before sleep, and establishing a relaxing bedtime routine. If you consistently have trouble sleeping, consult a healthcare provider as you may have a sleep disorder that requires treatment.",
+        "source": "National Sleep Foundation Guidelines 2023",
+        "category": "sleep_medicine",
+        "url": "https://www.sleepfoundation.org/sleep-hygiene",
+        "language": "en"
+    },
+    {
+        "id": "preventive_care",
+        "title": "Preventive Healthcare and Screenings",
+        "content": "Preventive care helps detect or prevent serious diseases and medical problems before they become major. Regular check-ups and screenings can catch problems early when they're easier to treat. Recommended screenings include blood pressure checks (annually), cholesterol screening (every 4-6 years), diabetes screening (every 3 years after age 45), cancer screenings (mammograms, colonoscopies, Pap smears as recommended), and bone density tests. Vaccinations are also important for preventing infectious diseases. The specific screenings and frequency depend on age, gender, family history, and risk factors. Consult with your healthcare provider to develop a personalized preventive care plan.",
+        "source": "U.S. Preventive Services Task Force 2023",
+        "category": "preventive_medicine",
+        "url": "https://www.uspreventiveservicestaskforce.org/",
+        "language": "en"
+    }
+]

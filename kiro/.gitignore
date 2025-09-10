@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.egg-info/
+*.log
+*.env
+.env*
+
+# Virtual environments
+venv/
+ENV/
+.env/
+.env.examples 
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Node
+node_modules/
+
+# Static/Generated
+static/favicon.svg
+static/js/chat.js
+
+# Misc
+*.bak
+*.swp
+*.tmp
+
+# Submission/Docs
+AI_HealthChatbot_SIH_Submission.docx
