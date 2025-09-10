@@ -37,3 +37,4 @@ node_modules/
 *.swp
 *.tmp
 
+chroma_db/ 
