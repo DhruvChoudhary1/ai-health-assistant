@@ -14,7 +14,7 @@ __pycache__/
 venv/
 ENV/
 .env/
-.env.examples 
+
 
 # Jupyter Notebooks
 .ipynb_checkpoints/
@@ -30,13 +30,10 @@ Thumbs.db
 node_modules/
 
 # Static/Generated
-static/favicon.svg
-static/js/chat.js
+
 
 # Misc
 *.bak
 *.swp
 *.tmp
 
-# Submission/Docs
-AI_HealthChatbot_SIH_Submission.docx
