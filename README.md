@@ -38,6 +38,23 @@ A conversational AI assistant for health-related queries, built with FastAPI, Te
 - `templates/` - HTML templates
 - `knowledge_base/` - Health documents
 
+## How Kiro Was Used in This Project
+
+This project was built using the **Kiro** framework, which provided a modular and scalable foundation for developing the AI Health Assistant. Kiro was instrumental in organizing the codebase, managing dependencies, and streamlining the integration of various components such as the RAG engine, Telegram bot handler, and translation services.
+
+### Key Roles of Kiro in the Project
+
+- **Project Structure:** Kiro helped maintain a clean and organized directory structure, making it easier to manage source code, static files, templates, and configuration.
+- **Dependency Management:** By leveraging Kiro’s setup, all required Python packages and modules were efficiently managed through the `requirements.txt` file.
+- **Integration:** Kiro facilitated the seamless integration of third-party libraries like `deep_translator` and `python-telegram-bot`, enabling advanced features such as multilingual support and real-time chat interactions.
+- **Extensibility:** The modular nature of Kiro allowed for easy addition of new features and components, such as the RAG engine for retrieval-augmented generation and custom handlers for Telegram interactions.
+
+### Getting Started with Kiro
+
+To replicate or extend this project, simply follow the setup instructions provided in the repository. Make sure to install all dependencies and activate the virtual environment as described.
+
+Kiro’s robust foundation ensures that the project remains maintainable, extensible, and easy to collaborate on.
+
 ## Contributing
 Pull requests and suggestions are welcome!
 
