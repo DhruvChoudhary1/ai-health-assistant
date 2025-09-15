@@ -55,6 +55,10 @@ To replicate or extend this project, simply follow the setup instructions provid
 
 Kiro’s robust foundation ensures that the project remains maintainable, extensible, and easy to collaborate on.
 
+### Category
+
+I'm submitting to Wildcard/Freestyle category. 
+
 ## Contributing
 Pull requests and suggestions are welcome!
 
