@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import ssl
 import certifi
 import httpx   # used by python-telegram-bot
+from telegram.ext import ApplicationBuilder
 
 # FIX WINDOWS SSL ISSUE FOR TELEGRAM + HTTPX
 ssl_context = ssl.create_default_context(cafile=certifi.where())
@@ -46,6 +47,7 @@ if not TELEGRAM_BOT_TOKEN:
 
 # Global RAG engine
 rag_engine = RAGEngine()
+application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 
 
 # -----------------------------------------
@@ -115,3 +117,7 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         raise
+
+def run_bot():
+    application.run_polling()
+

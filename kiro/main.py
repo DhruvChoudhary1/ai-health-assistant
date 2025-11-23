@@ -8,6 +8,8 @@ import os
 from dotenv import load_dotenv
 import logging
 from rag_engine import RAGEngine
+import threading
+from telegram_handler import run_bot
 
 # Load environment variables
 load_dotenv()
@@ -37,10 +39,12 @@ rag_engine = RAGEngine()
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize the RAG engine on startup"""
-    logger.info("Starting AI Health Chatbot...")
+    # Start RAG engine
     await rag_engine.initialize()
-    logger.info("RAG Engine initialized successfully")
+
+    # Start Telegram bot in separate thread
+    bot_thread = threading.Thread(target=run_bot, daemon=True)
+    bot_thread.start()
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -85,6 +89,7 @@ async def get_supported_languages():
             {"code": "fr", "name": "Français"},
         ]
     }
+
 
 if __name__ == "__main__":
     host = os.getenv("HOST", "0.0.0.0")
