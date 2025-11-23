@@ -1,28 +1,24 @@
 FROM python:3.10-slim
 
-# Prevents Python from generating .pyc files
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Install system dependencies
+# Install required system packages
 RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Set app directory
 WORKDIR /app
 
-# Copy requirements
+# Install dependencies
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all project files
+# Copy project files
 COPY . .
 
-# Expose port
-EXPOSE 7860
+# Expose Render’s required port
+EXPOSE 10000
 
-# Start app
-CMD ["python", "main.py"]
+# Run FastAPI using uvicorn on port 10000
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000"]
