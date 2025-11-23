@@ -1,81 +1,117 @@
 import os
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-from dotenv import load_dotenv
-from rag_engine import RAGEngine
-import logging
-from deep_translator import GoogleTranslator 
 import asyncio
+import logging
+from dotenv import load_dotenv
 
-# Configure logging
+import ssl
+import certifi
+import httpx   # used by python-telegram-bot
+
+# FIX WINDOWS SSL ISSUE FOR TELEGRAM + HTTPX
+ssl_context = ssl.create_default_context(cafile=certifi.where())
+
+# Patch httpx for ALL Telegram API calls
+old_async_client = httpx.AsyncClient
+
+class PatchedAsyncClient(httpx.AsyncClient):
+    def __init__(self, *args, **kwargs):
+        # Force Telegram to use valid SSL certificates
+        kwargs["verify"] = ssl_context
+        super().__init__(*args, **kwargs)
+
+httpx.AsyncClient = PatchedAsyncClient
+# -----------------------------------------
+
+from telegram import Update
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
+)
+
+from rag_engine import RAGEngine
+
+# Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Env
 load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-# Initialize RAG engine synchronously at module level
+if not TELEGRAM_BOT_TOKEN:
+    raise RuntimeError("TELEGRAM_BOT_TOKEN not set in .env")
+
+# Global RAG engine
 rag_engine = RAGEngine()
 
+
+# -----------------------------------------
+# COMMAND HANDLERS
+# -----------------------------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Hello! I am dr_haathi_bot, your AI Health Assistant. Ask me anything!")
+    await update.message.reply_text(
+        "Hello! I am dr_haathi_bot 🐘💊\n"
+        "Your AI Health Assistant.\n\n"
+        "Ask me anything related to health!"
+    )
+
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
-    try:
-        response = await rag_engine.process_query(user_message)
-        await update.message.reply_text(response["answer"])
-    except Exception as e:
-        logger.error(f"Telegram handler error: {str(e)}")
-        await update.message.reply_text("Sorry, something went wrong.")
 
+    try:
+        response = await rag_engine.process_query(user_message, "en")
+        await update.message.reply_text(response["answer"])
+
+    except Exception as e:
+        logger.error(f"Telegram error: {str(e)}")
+        await update.message.reply_text("⚠️ Sorry, something went wrong. Try again later.")
+
+
+# -----------------------------------------
+# MAIN FUNCTION
+# -----------------------------------------
 def main():
-    """Main function using synchronous approach"""
-    # Initialize RAG engine in a separate thread if needed
-    import threading
-    
+    # Initialize RAG engine
     def init_rag():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(rag_engine.initialize())
         loop.close()
-    
-    # Initialize RAG engine
-    logger.info("Initializing RAG engine...")
-    init_thread = threading.Thread(target=init_rag)
-    init_thread.start()
-    init_thread.join()
-    logger.info("RAG engine initialized")
-    
-    # Create the application
+
+    logger.info("Initializing RAG engine for Telegram...")
+    import threading
+    t = threading.Thread(target=init_rag)
+    t.start()
+    t.join()
+    logger.info("RAG engine initialized.")
+
+    # Build Telegram bot normally (NO ssl_context here!)
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-    
-    # Add handlers
+
+    # Add command/message handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
-    logger.info("Starting Telegram bot...")
-    
-    # Run the bot using the polling method
-    app.run_polling(
-        poll_interval=1,
-        timeout=10,
-        bootstrap_retries=5,
-        read_timeout=10,
-        write_timeout=10,
-        connect_timeout=10,
-        pool_timeout=10
-    )
 
+    logger.info("Starting Telegram bot polling...")
+    app.run_polling()
+
+
+# -----------------------------------------
+# ENTRY POINT
+# -----------------------------------------
 if __name__ == "__main__":
     import sys
     if sys.platform.startswith("win"):
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    
+
     try:
         main()
     except KeyboardInterrupt:
-        logger.info("Bot stopped by user")
+        logger.info("Bot stopped by user.")
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
-        raise 
+        raise
