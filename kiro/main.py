@@ -7,25 +7,19 @@ import uvicorn
 import os
 from dotenv import load_dotenv
 import logging
+import threading
+import asyncio
+
 from rag_engine import RAGEngine
-from telegram_handler import application, rag_engine as tele_rag
+from telegram_handler import run_bot   # ← correct import
 
-
-# Load environment variables
+# Load env
 load_dotenv()
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize FastAPI app
-async def init_rag_engine():
-    try:
-        await rag_engine.initialize()
-        logger.info("RAG initialized in background")
-    except Exception as e:
-        logger.error(f"RAG init failed: {e}")
-
+# FastAPI App
 app = FastAPI(title="AI Health Chatbot", version="1.0.0")
 
 # CORS
@@ -37,85 +31,65 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static + templates
+# Static + Templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# RAG engine (shared by all web requests)
+# RAG engine (web only)
 rag_engine = RAGEngine()
+
 @app.on_event("startup")
 async def startup_event():
-    # Start Telegram bot immediately
-    await application.initialize()
-    await application.start()
+    # Start RAG engine for website
+    logger.info("Initializing RAG engine (web)...")
+    asyncio.create_task(rag_engine.initialize())
 
-    # Delay RAG initialization so FastAPI can start first
-    import asyncio
-    asyncio.create_task(init_rag_engine())
+    # Start Telegram bot in background thread
+    logger.info("Starting Telegram bot thread…")
+    t = threading.Thread(target=run_bot, daemon=True)
+    t.start()
 
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    try:
-        await application.stop()
-    except:
-        pass
+    logger.info("Startup completed.")
 
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    """Serve main web UI"""
     return templates.TemplateResponse("index.html", {"request": request})
+
 
 @app.post("/chat")
 async def chat_endpoint(request: Request):
-    """Handle chat messages from web widget"""
     try:
         data = await request.json()
-        message = data.get("message", "")
+        message = data.get("message")
         language = data.get("language", "en")
 
         if not message:
             raise HTTPException(status_code=400, detail="Message is required")
 
-        response = await rag_engine.process_query(message, language)
+        result = await rag_engine.process_query(message, language)
 
         return JSONResponse({
-            "response": response["answer"],
-            "citations": response.get("citations", []),
+            "response": result["answer"],
+            "citations": result.get("citations", []),
             "language": language,
-            "timestamp": response.get("timestamp"),
+            "timestamp": result.get("timestamp")
         })
 
     except Exception as e:
-        logger.error(f"Chat endpoint error: {str(e)}")
+        logger.error(f"/chat error: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "AI Health Chatbot"}
-
-@app.get("/languages")
-async def get_supported_languages():
-    return {
-        "languages": [
-            {"code": "en", "name": "English"},
-            {"code": "hi", "name": "हिंदी"},
-            {"code": "es", "name": "Español"},
-            {"code": "fr", "name": "Français"},
-        ]
-    }
+    return {"status": "healthy"}
 
 
 if __name__ == "__main__":
-    host = os.getenv("HOST", "0.0.0.0")
-    port = int(os.getenv("PORT", 8000))
-    debug = os.getenv("DEBUG", "true").lower() == "true"
-
     uvicorn.run(
         "main:app",
-        host=host,
-        port=port,
-        reload=debug,
-        log_level="info",
+        host=os.getenv("HOST", "0.0.0.0"),
+        port=int(os.getenv("PORT", 8000)),
+        reload=False,
     )
