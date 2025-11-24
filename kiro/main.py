@@ -8,8 +8,8 @@ import os
 from dotenv import load_dotenv
 import logging
 from rag_engine import RAGEngine
-import threading
-from telegram_handler import run_bot
+from telegram_handler import application, rag_engine as tele_rag
+
 
 # Load environment variables
 load_dotenv()
@@ -36,15 +36,29 @@ templates = Jinja2Templates(directory="templates")
 
 # RAG engine (shared by all web requests)
 rag_engine = RAGEngine()
-
 @app.on_event("startup")
 async def startup_event():
-    # Start RAG engine
+    # Initialize main RAG engine
     await rag_engine.initialize()
 
-    # Start Telegram bot in separate thread
-    bot_thread = threading.Thread(target=run_bot, daemon=True)
-    bot_thread.start()
+    # Initialize Telegram RAG engine (shared instance)
+    await tele_rag.initialize()
+
+    # Start Telegram bot safely
+    try:
+        await application.initialize()
+        await application.start()
+        logger.info("Telegram bot started successfully.")
+    except Exception as e:
+        logger.error(f"Telegram bot failed: {e}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    try:
+        await application.stop()
+    except:
+        pass
+
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
