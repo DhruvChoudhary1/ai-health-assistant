@@ -1,6 +1,7 @@
-import chromadb
-chromadb.telemetry.posthog.capture = lambda *args, **kwargs: None
 import os
+os.environ["ANONYMIZED_TELEMETRY"] = "false"
+os.environ["CHROMA_TELEMETRY"] = "false"
+import chromadb
 import json
 import asyncio
 from datetime import datetime
@@ -16,6 +17,7 @@ import re
 os.environ["CHROMA_TELEMETRY"] = "False"
 
 logger = logging.getLogger(__name__)
+
 
 
 class RAGEngine:
@@ -36,12 +38,11 @@ class RAGEngine:
             os.makedirs(persist_directory, exist_ok=True)
 
             # Very lightweight ChromaDB
-            self.client = chromadb.PersistentClient(path=persist_directory)
+            self.client = chromadb.PersistentClient(
+    path=persist_directory,
+    settings=Settings(anonymized_telemetry=False)
+)
 
-            self.collection = self.client.get_or_create_collection(
-                name="health_knowledge",
-                metadata={"hnsw:space": "cosine"}
-            )
 
             # Load embeddings (very small)
             self.embedding_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
