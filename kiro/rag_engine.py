@@ -1,73 +1,39 @@
-import os
-import json
-import asyncio
-from datetime import datetime
-from typing import List, Dict, Any
-
-import numpy as np
-from sentence_transformers import SentenceTransformer
-from deep_translator import GoogleTranslator
-import requests
 import logging
 import re
-
-from local_llm import LocalLLM, HealthKnowledgeBase
+from datetime import datetime
+from typing import Dict, Any, List
+from deep_translator import GoogleTranslator
 
 logger = logging.getLogger(__name__)
 
 
+def _tokenize(text: str) -> set:
+    """Very simple tokenizer: lowercase & keep only word characters."""
+    return set(re.findall(r"\b\w+\b", text.lower()))
+
+
 class RAGEngine:
-    def __init__(self):
-        # Embeddings + docs
-        self.embedding_model: SentenceTransformer | None = None
-        self.documents: list[dict[str, Any]] = []
-        self.doc_embeddings: np.ndarray | None = None  # shape: (N, dim)
+    """
+    Tiny in-memory 'RAG' engine.
 
-        # Translation
-        # (we'll create new translators per call to avoid weird state bugs)
-        # self.translator = GoogleTranslator(source="auto", target="en")
+    - Holds a small list of medical documents.
+    - Uses keyword overlap to find the most relevant docs.
+    - Optionally auto-translates question/answer via GoogleTranslator.
+    """
 
-        # Local LLM + rule-based KB
-        self.local_llm = LocalLLM()
-        self.health_kb = HealthKnowledgeBase()
+    def __init__(self) -> None:
+        # Translator (GoogleTranslator uses requests under the hood)
+        self.translator = GoogleTranslator(source="auto", target="en")
 
-        # Optional HF key (can be empty)
-        self.hf_headers = {
-            "Authorization": f"Bearer {os.getenv('HUGGINGFACE_API_KEY', 'hf_demo')}"
-        }
-
-    async def initialize(self):
-        """Initialize the RAG engine components (in-memory only)."""
-        try:
-            logger.info("Initializing RAG engine (in-memory)…")
-
-            # Load embedding model
-            self.embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-            logger.info("SentenceTransformer loaded.")
-
-            # Load health knowledge base into memory
-            await self._load_knowledge_base()
-
-            logger.info(
-                f"Knowledge base loaded ({len(self.documents)} docs only)."
-            )
-            logger.info("RAG Engine initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize RAG engine: {str(e)}")
-            # If this fails, the app can’t really answer questions → re-raise
-            raise
-
-    async def _load_knowledge_base(self):
-        """Load health knowledge base into memory and precompute embeddings."""
-        health_documents = [
+        # Small health knowledge base
+        self.documents: List[Dict[str, Any]] = [
             {
                 "id": "doc_1",
                 "content": (
-                    "Diabetes is a chronic condition that affects how your body "
-                    "processes blood sugar (glucose). Type 1 diabetes occurs when "
-                    "your immune system attacks insulin-producing cells. Type 2 "
-                    "diabetes occurs when your body becomes resistant to insulin "
-                    "or doesn't make enough insulin."
+                    "Diabetes is a chronic condition that affects how your body processes "
+                    "blood sugar (glucose). Type 1 diabetes occurs when your immune system "
+                    "attacks insulin-producing cells. Type 2 diabetes occurs when your body "
+                    "becomes resistant to insulin or doesn't make enough insulin."
                 ),
                 "source": "WHO Diabetes Fact Sheet 2023",
                 "category": "diabetes",
@@ -76,12 +42,11 @@ class RAGEngine:
             {
                 "id": "doc_2",
                 "content": (
-                    "Hypertension (high blood pressure) is a serious medical "
-                    "condition that significantly increases the risks of heart, "
-                    "brain, kidney and other diseases. Blood pressure is measured "
-                    "in millimeters of mercury (mmHg) and is recorded as two "
-                    "numbers: systolic pressure (when the heart beats) over "
-                    "diastolic pressure (when the heart rests between beats)."
+                    "Hypertension (high blood pressure) is a serious medical condition that "
+                    "significantly increases the risks of heart, brain, kidney and other "
+                    "diseases. Blood pressure is measured in millimeters of mercury (mmHg) "
+                    "and is recorded as two numbers: systolic pressure (when the heart beats) "
+                    "over diastolic pressure (when the heart rests between beats)."
                 ),
                 "source": "American Heart Association Guidelines 2023",
                 "category": "hypertension",
@@ -90,12 +55,11 @@ class RAGEngine:
             {
                 "id": "doc_3",
                 "content": (
-                    "Regular physical activity is one of the most important things "
-                    "you can do for your health. It can help control your weight, "
-                    "reduce your risk of heart disease, strengthen your bones and "
-                    "muscles, and improve your mental health and mood. Adults "
-                    "should aim for at least 150 minutes of moderate-intensity "
-                    "aerobic activity per week."
+                    "Regular physical activity is one of the most important things you can do "
+                    "for your health. It can help control your weight, reduce your risk of "
+                    "heart disease, strengthen your bones and muscles, and improve your "
+                    "mental health and mood. Adults should aim for at least 150 minutes of "
+                    "moderate-intensity aerobic activity per week."
                 ),
                 "source": "CDC Physical Activity Guidelines 2023",
                 "category": "exercise",
@@ -104,11 +68,10 @@ class RAGEngine:
             {
                 "id": "doc_4",
                 "content": (
-                    "A balanced diet includes a variety of foods from all food "
-                    "groups: fruits, vegetables, whole grains, lean proteins, and "
-                    "healthy fats. Limiting processed foods, added sugars, and "
-                    "excessive sodium can help prevent chronic diseases and "
-                    "maintain optimal health."
+                    "A balanced diet includes a variety of foods from all food groups: fruits, "
+                    "vegetables, whole grains, lean proteins, and healthy fats. Limiting "
+                    "processed foods, added sugars, and excessive sodium can help prevent "
+                    "chronic diseases and maintain optimal health."
                 ),
                 "source": "Harvard School of Public Health 2023",
                 "category": "nutrition",
@@ -117,11 +80,10 @@ class RAGEngine:
             {
                 "id": "doc_5",
                 "content": (
-                    "Mental health includes our emotional, psychological, and "
-                    "social well-being. It affects how we think, feel, and act. "
-                    "Good mental health is essential at every stage of life. "
-                    "Common mental health conditions include depression, anxiety "
-                    "disorders, and stress-related disorders."
+                    "Mental health includes our emotional, psychological, and social well-being. "
+                    "It affects how we think, feel, and act. Good mental health is essential at "
+                    "every stage of life. Common mental health conditions include depression, "
+                    "anxiety disorders, and stress-related disorders."
                 ),
                 "source": "National Institute of Mental Health 2023",
                 "category": "mental_health",
@@ -129,206 +91,102 @@ class RAGEngine:
             },
         ]
 
-        self.documents = health_documents
+        # Pre-compute token sets for each document for quick similarity checks
+        for doc in self.documents:
+            doc["tokens"] = _tokenize(doc["content"])
 
-        # Compute embeddings (and normalize for cosine similarity)
-        texts = [d["content"] for d in health_documents]
-        raw_embeddings = self.embedding_model.encode(
-            texts, show_progress_bar=True
-        )
-        # Normalize
-        norms = np.linalg.norm(raw_embeddings, axis=1, keepdims=True)
-        self.doc_embeddings = raw_embeddings / norms
+        logger.info("Lightweight RAGEngine initialized with %d documents", len(self.documents))
 
-    # ------------------- RAG QUERY -------------------
+    def _score(self, query_tokens: set, doc_tokens: set) -> float:
+        """Simple overlap score between query tokens and document tokens."""
+        if not query_tokens or not doc_tokens:
+            return 0.0
+        overlap = query_tokens.intersection(doc_tokens)
+        return len(overlap) / len(doc_tokens)
 
-    async def process_query(
-        self, query: str, language: str = "en"
-    ) -> Dict[str, Any]:
-        """Process user query and return RAG-based response."""
-        try:
-            if self.embedding_model is None or self.doc_embeddings is None:
-                raise RuntimeError("RAGEngine not initialized")
-
-            original_query = query
-
-            # Translate query to English if needed
-            if language != "en":
-                query = GoogleTranslator(
-                    source=language, target="en"
-                ).translate(query)
-
-            # Embed query
-            q_emb = self.embedding_model.encode(query)
-            q_emb = q_emb / np.linalg.norm(q_emb)
-
-            # Cosine similarity with all docs
-            sims = self.doc_embeddings @ q_emb  # (N,)
-
-            # Get top 3 documents
-            top_idx = np.argsort(-sims)[:3]
-
-            context_docs = []
-            citations = []
-
-            for rank, idx in enumerate(top_idx, start=1):
-                score = float(sims[idx])
-                if score < 0.2:  # relevance threshold
-                    continue
-
-                doc = self.documents[idx]
-                context_docs.append(doc["content"])
-                citations.append(
-                    {
-                        "id": rank,
-                        "source": doc["source"],
-                        "url": doc.get("url", ""),
-                        "relevance_score": round(score, 3),
-                    }
-                )
-
-            context = "\n\n".join(context_docs)
-
-            # Generate response (rule-based / local LLM / fallback)
-            answer = await self._generate_response(query, context)
-
-            # Translate back if needed
-            if language != "en":
-                answer = GoogleTranslator(
-                    source="en", target=language
-                ).translate(answer)
-
-            return {
-                "answer": answer,
-                "citations": citations,
-                "original_query": original_query,
-                "processed_query": query,
-                "language": language,
-                "timestamp": datetime.now().isoformat(),
-            }
-
-        except Exception as e:
-            logger.error(f"process_query error: {str(e)}")
-            return {
-                "answer": (
-                    "I apologize, but I'm experiencing technical difficulties. "
-                    "Please try again later."
-                ),
-                "citations": [],
-                "error": str(e),
-                "timestamp": datetime.now().isoformat(),
-            }
-
-    # ------------------- RESPONSE GENERATION -------------------
-
-    async def _generate_response(self, query: str, context: str) -> str:
-        """Generate response using free / local methods."""
-        try:
-            # 1) Rule-based knowledge base
-            kb_response = self.health_kb.get_response(query)
-            if kb_response:
-                return kb_response
-
-            # 2) Local LLM if available
-            if getattr(self.local_llm, "model", None) is not None:
-                try:
-                    llm_response = self.local_llm.generate_response(query, context)
-                    if llm_response and len(llm_response) > 50:
-                        return (
-                            llm_response
-                            + "\n\n⚠️ Important: This information is for educational "
-                            "purposes only. Always consult qualified healthcare "
-                            "professionals for medical advice."
-                        )
-                except Exception as e:
-                    logger.warning(f"Local LLM failed: {str(e)}")
-
-            # 3) HuggingFace API (optional)
-            if os.getenv("HUGGINGFACE_API_KEY") and os.getenv(
-                "HUGGINGFACE_API_KEY"
-            ) != "hf_demo":
-                try:
-                    hf_response = await self._enhance_with_hf("", query)
-                    if hf_response:
-                        return hf_response
-                except Exception as e:
-                    logger.warning(f"HuggingFace API failed: {str(e)}")
-
-            # 4) Simple context-based fallback
-            return self._create_contextual_response(query, context)
-
-        except Exception as e:
-            logger.error(f"Error generating response: {str(e)}")
-            return (
-                "I'm sorry, I couldn't generate a response at this time. "
-                "Please consult with a healthcare professional for medical advice."
-            )
-
-    def _create_contextual_response(self, query: str, context: str) -> str:
-        """Very simple heuristic response using retrieved context."""
-        if not context:
-            return (
-                "I don't have enough information to answer your question accurately. "
-                "Please consult with a healthcare professional for medical advice."
-            )
-
-        sentences = [s.strip() for s in context.split(".") if s.strip()]
-        query_words = set(query.lower().split())
-
+    def _retrieve(self, query: str) -> List[Dict[str, Any]]:
+        """Return docs sorted by simple keyword overlap with the query."""
+        q_tokens = _tokenize(query)
         scored = []
-        for s in sentences:
-            words = set(s.lower().split())
-            overlap = len(words & query_words)
-            if overlap > 0:
-                scored.append((s, overlap))
+        for doc in self.documents:
+            score = self._score(q_tokens, doc["tokens"])
+            if score > 0:
+                scored.append((score, doc))
 
-        scored.sort(key=lambda x: x[1], reverse=True)
-        top_sentences = [s for s, _ in scored[:3]] or sentences[:2]
+        scored.sort(key=lambda x: x[0], reverse=True)
+        # At least 1 doc
+        return [d for _, d in scored[:3]] or [self.documents[0]]
 
-        response = "Based on the available medical information:\n\n"
-        response += ". ".join(top_sentences)
+    def _build_answer(self, query: str, docs: List[Dict[str, Any]]) -> str:
+        """Construct a readable answer from retrieved docs."""
+        intro = "Based on trusted health information sources:\n\n"
+        parts = []
 
-        response += "\n\n[1] Medical literature and health guidelines"
-        response += (
-            "\n\n⚠️ Important: This information is for educational purposes only. "
-            "Always consult with qualified healthcare professionals for medical "
-            "advice, diagnosis, or treatment."
+        for i, doc in enumerate(docs, start=1):
+            parts.append(f"{i}. {doc['content']}")
+
+        body = "\n\n".join(parts)
+
+        disclaimer = (
+            "\n\n⚠️ Important: This assistant provides *educational* information only. "
+            "It is not a substitute for professional medical advice, diagnosis, or treatment. "
+            "Always consult a qualified healthcare professional about your own health."
         )
-        return response
 
-    async def _enhance_with_hf(self, base_response: str, query: str) -> str | None:
-        """Optionally enhance using a HuggingFace text-gen model."""
+        return intro + body + disclaimer
+
+    async def process_query(self, query: str, language: str = "en") -> Dict[str, Any]:
+        """
+        Main entrypoint used by FastAPI & Telegram.
+
+        Returns a dict with: answer, citations, original_query, processed_query, language, timestamp.
+        """
+        original_query = query
+        processed_query = query
+
+        # 1) Translate to English if needed
+        if language != "en":
+            try:
+                processed_query = self.translator.translate(query, target="en")
+            except Exception as e:
+                logger.warning("Translation to EN failed: %s", e)
+                processed_query = query  # fallback
+
+        # 2) Retrieve relevant docs
         try:
-            payload = {
-                "inputs": f"Health Question: {query}\nAnswer: {base_response[:200]}",
-                "parameters": {
-                    "max_length": 300,
-                    "temperature": 0.7,
-                    "do_sample": True,
-                },
-            }
-
-            resp = requests.post(
-                "https://api-inference.huggingface.co/models/gpt2",
-                headers=self.hf_headers,
-                json=payload,
-                timeout=10,
-            )
-
-            if resp.status_code == 200:
-                result = resp.json()
-                if isinstance(result, list) and result:
-                    generated = result[0].get("generated_text", "")
-                    if "Answer:" in generated:
-                        enhanced = generated.split("Answer:", 1)[1].strip()
-                        if len(enhanced) > 50:
-                            return (
-                                enhanced
-                                + "\n\n⚠️ Important: This information is for "
-                                "educational purposes only. Always consult qualified "
-                                "healthcare professionals for medical advice."
-                            )
-            return None
+            docs = self._retrieve(processed_query)
         except Exception as e:
-            logger.warning(f"HuggingFace enhancement failed: {str(e)}")
-            return None
+            logger.error("Retrieval error: %s", e)
+            docs = [self.documents[0]]
+
+        # 3) Build answer in English
+        answer_en = self._build_answer(processed_query, docs)
+
+        # 4) Translate answer back if needed
+        answer = answer_en
+        if language != "en":
+            try:
+                answer = self.translator.translate(answer_en, target=language)
+            except Exception as e:
+                logger.warning("Answer translation failed: %s", e)
+                answer = answer_en
+
+        # 5) Build citations
+        citations = [
+            {
+                "id": idx + 1,
+                "source": d["source"],
+                "url": d["url"],
+                "category": d["category"],
+            }
+            for idx, d in enumerate(docs)
+        ]
+
+        return {
+            "answer": answer,
+            "citations": citations,
+            "original_query": original_query,
+            "processed_query": processed_query,
+            "language": language,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }
