@@ -1,3 +1,5 @@
+import chromadb
+chromadb.telemetry.posthog.capture = lambda *args, **kwargs: None
 import os
 import json
 import asyncio

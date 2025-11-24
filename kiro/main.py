@@ -19,6 +19,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
+async def init_rag_engine():
+    try:
+        await rag_engine.initialize()
+        logger.info("RAG initialized in background")
+    except Exception as e:
+        logger.error(f"RAG init failed: {e}")
+
 app = FastAPI(title="AI Health Chatbot", version="1.0.0")
 
 # CORS
@@ -38,19 +45,14 @@ templates = Jinja2Templates(directory="templates")
 rag_engine = RAGEngine()
 @app.on_event("startup")
 async def startup_event():
-    # Initialize main RAG engine
-    await rag_engine.initialize()
+    # Start Telegram bot immediately
+    await application.initialize()
+    await application.start()
 
-    # Initialize Telegram RAG engine (shared instance)
-    await tele_rag.initialize()
+    # Delay RAG initialization so FastAPI can start first
+    import asyncio
+    asyncio.create_task(init_rag_engine())
 
-    # Start Telegram bot safely
-    try:
-        await application.initialize()
-        await application.start()
-        logger.info("Telegram bot started successfully.")
-    except Exception as e:
-        logger.error(f"Telegram bot failed: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_event():
