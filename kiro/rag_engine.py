@@ -31,22 +31,20 @@ def extract_keyword_section(text: str, keywords: list, default: str):
 # WIKIPEDIA SUMMARY FETCH
 # ---------------------------
 def wiki_fetch(topic: str):
-    """
-    Gets only the summary (fast & reliable).
-    """
-    url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{topic.replace(' ', '%20')}"
+    url = f"https://en.wikipedia.org/api/rest_v1/page/plain/{topic.replace(' ', '%20')}"
     logger.warning(f"FETCHING FROM WIKI: {url}")
 
     try:
         res = requests.get(url, timeout=5)
         if res.status_code != 200:
             return None
-        data = res.json()
-        return data.get("extract")
+
+        data = res.text  # plain text response
+        return data
+
     except Exception as e:
         logger.error(f"Wikipedia fetch error: {e}")
         return None
-
 
 # ---------------------------
 # MAIN RAG ENGINE
