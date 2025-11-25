@@ -10,18 +10,17 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------
-# SIMPLE QUERY → TOPIC CLEANING
+# TURN A QUESTION INTO A CLEAN TOPIC
 # ---------------------------
 def extract_topic_from_query(query: str) -> str:
     """
-    Turn a user question into a clean Wikipedia title.
+    Convert natural-language questions to a proper Wikipedia title.
     Examples:
       "what is pneumonia" -> "pneumonia"
       "tell me about dengue fever" -> "dengue fever"
     """
     q = query.strip().lower()
 
-    # remove common prefixes
     q = re.sub(
         r"^(what is|what's|what is a|what is an|tell me about|explain|define|info on|information on)\s+",
         "",
@@ -29,10 +28,7 @@ def extract_topic_from_query(query: str) -> str:
         flags=re.I,
     )
 
-    # remove question mark and extra punctuation
     q = re.sub(r"[?\.,!]+$", "", q)
-
-    # keep only first 3 words to avoid super long titles
     words = q.split()
     topic = " ".join(words[:3]) if words else q
 
@@ -40,17 +36,15 @@ def extract_topic_from_query(query: str) -> str:
 
 
 # ---------------------------
-# CLEAN SECTION EXTRACTION
+# CLEAN SENTENCE EXTRACTION
 # ---------------------------
 def extract_keyword_section(text: str, keywords: list, default: str) -> str:
     """
-    Extracts one sentence containing any of the given keywords.
-    Falls back to `default` if nothing matches.
+    Return the first sentence containing any keyword, else default.
     """
     sentences = re.split(r"\. |\n", text)
     for s in sentences:
-        s_l = s.lower()
-        if any(k in s_l for k in keywords):
+        if any(k in s.lower() for k in keywords):
             return s.strip()
     return default
 
@@ -59,20 +53,24 @@ def extract_keyword_section(text: str, keywords: list, default: str) -> str:
 # WIKIPEDIA SUMMARY FETCH
 # ---------------------------
 def wiki_fetch(topic: str):
-    url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{topic.replace(' ', '%20')}"
+    """
+    Fetch only the summary (fast, free, reliable).
+    """
+    url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{quote(topic)}"
     headers = {
-        "User-Agent": "AIHealthAssistant/1.0 (https://ai-health-assistant-l2l8.onrender.com/; dhruv@example.com)"
+        "User-Agent": "AIHealthAssistant/1.0 (https://ai-health-assistant-l2l8.onrender.com; contact: dhruv)"
     }
+
     try:
         logger.warning(f"FETCHING FROM WIKI: {url}")
         res = requests.get(url, headers=headers, timeout=10)
 
         if res.status_code == 403:
-            logger.error("Wikipedia blocked request: 403 Forbidden — User-Agent required.")
+            logger.error("Wikipedia blocked request (403) — User-Agent required.")
             return None
 
         if res.status_code != 200:
-            logger.error(f"Wiki status {res.status_code}")
+            logger.error(f"Wikipedia returned status {res.status_code}")
             return None
 
         return res.json().get("extract")
@@ -91,18 +89,22 @@ class RAGEngine:
         logger.info("Lightweight Wikipedia RAG initialized.")
 
     async def process_query(self, query: str, language: str = "en") -> Dict[str, Any]:
+
         original_query = query
         processed_query = query
 
-        # Translate query → English
+        # Convert query → English
         if language != "en":
             try:
                 processed_query = self.translator.translate(query, target="en")
             except Exception:
                 processed_query = query
 
-        # Fetch from Wikipedia summary
-        summary = wiki_fetch(processed_query)
+        # Convert question to Wikipedia topic
+        topic = extract_topic_from_query(processed_query)
+
+        # Fetch summary
+        summary = wiki_fetch(topic)
         if not summary:
             return {
                 "answer": "⚠️ I could not find medical information about this condition.",
@@ -113,73 +115,79 @@ class RAGEngine:
                 "timestamp": datetime.utcnow().isoformat() + "Z",
             }
 
-        # --- Extract structured sections ---
+        # Extract structured information
         definition = summary
 
         symptoms = extract_keyword_section(
             summary,
-            ["symptom", "signs", "cough", "fever", "pain"],
-            "Symptoms vary depending on the exact type and severity."
+            ["symptom", "signs", "cough", "fever", "pain", "infection"],
+            "Symptoms vary based on the exact condition and severity."
         )
 
         causes = extract_keyword_section(
             summary,
             ["cause", "caused", "due to", "results from"],
-            "Causes are not clearly mentioned in this short summary."
+            "Causes are not clearly mentioned in this summary."
         )
 
         treatment = extract_keyword_section(
             summary,
             ["treat", "treatment", "therapy", "managed"],
-            "Treatment details are not included here. Consult a medical professional."
+            "Treatment details are not included here. Consult a healthcare professional."
         )
 
         prevention = extract_keyword_section(
             summary,
             ["prevent", "prevention", "avoid", "reduce risk"],
-            "General precautions include hygiene, healthy lifestyle, and timely vaccination or screening (when available)."
+            "General precautions include hygiene, lifestyle care, and timely vaccination/screening."
         )
 
         complications = extract_keyword_section(
             summary,
-            ["complication", "risk", "danger", "serious", "life-threatening"],
-            "Possible complications depend on severity and the person’s overall health."
+            ["complication", "risk", "serious", "life-threatening", "danger"],
+            "Complications depend on severity and patient health."
         )
 
-        # ---------- Build final formatted response ----------
+        # Final formatted message
         answer_en = f"""
-📌 **Medical Information about {extract_topic_from_query(processed_query).title()}**
+🔍 **Medical Information: {topic.title()}**
 
-📖 **Definition**  
+📘 **Definition**  
 {definition}
 
+---
+
 🩺 **Symptoms**  
-- {symptoms}
+• {symptoms}
 
 ⚠️ **Causes**  
-- {causes}
+• {causes}
 
 💊 **Treatment**  
-- {treatment}
+• {treatment}
 
 🛡️ **Prevention / Precautions**  
-- {prevention}
+• {prevention}
 
 ❗ **Complications**  
-- {complications}
+• {complications}
 
-⚠️ *This assistant provides educational information only. It is not a substitute for professional medical advice, diagnosis, or treatment.*
-        """
+---
 
-        # Translate back
+📎 **Source:** Wikipedia  
+🔗 https://en.wikipedia.org/wiki/{topic.replace(" ", "_")}
+
+⚠️ *Disclaimer:* This assistant provides **educational health information only**.  
+It is **not** a substitute for professional medical advice, diagnosis, or treatment.
+"""
+
+        # Translate back if needed
         final_answer = answer_en
         if language != "en":
             try:
                 final_answer = self.translator.translate(answer_en, target=language)
             except Exception:
                 final_answer = answer_en
-
-        topic = extract_topic_from_query(processed_query)
 
         return {
             "answer": final_answer,
