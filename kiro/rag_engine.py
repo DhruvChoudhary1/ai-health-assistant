@@ -11,14 +11,36 @@ logger = logging.getLogger(__name__)
 # WIKIPEDIA FREE SEARCH
 # ---------------------------
 def wiki_fetch(topic: str):
-    url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{topic.replace(' ', '%20')}"
     try:
-        res = requests.get(url, timeout=5)
-        if res.status_code == 200:
-            return res.json().get("extract")
+        # Step 1 — Search first
+        search_url = f"https://en.wikipedia.org/w/api.php"
+        params = {
+            "action": "query",
+            "list": "search",
+            "srsearch": topic,
+            "format": "json"
+        }
+
+        search_res = requests.get(search_url, params=params, timeout=5)
+        search_data = search_res.json()
+
+        if "query" not in search_data or len(search_data["query"]["search"]) == 0:
+            return None
+
+        # Top search result title
+        top_title = search_data["query"]["search"][0]["title"]
+
+        # Step 2 — Fetch summary of that title
+        summary_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{top_title.replace(' ', '%20')}"
+        summary_res = requests.get(summary_url, timeout=5)
+
+        if summary_res.status_code != 200:
+            return None
+
+        return summary_res.json().get("extract")
+
     except Exception:
         return None
-    return None
 
 
 # ---------------------------
