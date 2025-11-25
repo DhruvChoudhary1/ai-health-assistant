@@ -1,22 +1,9 @@
 import logging
 import re
-from datetime import datetime
-from typing import Dict, Any, List
-from deep_translator import GoogleTranslator
-
-logger = logging.getLogger(__name__)
-
-
-def _tokenize(text: str) -> set:
-    """Very simple tokenizer: lowercase & keep only word characters."""
-    return set(re.findall(r"\b\w+\b", text.lower()))
-
 import requests
 from datetime import datetime
+from typing import Dict, Any
 from deep_translator import GoogleTranslator
-from typing import List, Dict, Any
-import logging
-import re
 
 logger = logging.getLogger(__name__)
 
@@ -25,38 +12,37 @@ logger = logging.getLogger(__name__)
 # ---------------------------
 def wiki_fetch(topic: str):
     url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{topic.replace(' ', '%20')}"
-    res = requests.get(url)
-
-    if res.status_code != 200:
+    try:
+        res = requests.get(url, timeout=5)
+        if res.status_code == 200:
+            return res.json().get("extract")
+    except Exception:
         return None
-
-    data = res.json()
-    return data.get("extract")
+    return None
 
 
 # ---------------------------
-# HEALTH INFORMATION EXTRACTION
+# BASIC MEDICAL INFO EXTRACTION
 # ---------------------------
-def extract_sections(text: str):
+def extract_medical_sections(text: str):
     text_l = text.lower()
 
-    symptoms = []
-    causes = []
-    prevention = []
-    treatment = []
+    symptoms = "Not specifically listed."
+    causes = "Causes not clearly listed."
+    treatment = "Treatment not clearly listed."
+    prevention = "General health precautions apply."
 
-    # SIMPLE KEYWORD-BASED MEDICAL EXTRACTION
     if "symptom" in text_l:
-        symptoms.append("The disease may present symptoms as mentioned in the medical summary.")
+        symptoms = "Symptoms are mentioned in the summary."
 
     if "cause" in text_l or "caused" in text_l:
-        causes.append("The cause(s) are referenced in the provided medical text.")
+        causes = "Causes appear in the summary text."
 
-    if "treat" in text_l:
-        treatment.append("Treatment approaches are mentioned in the medical text.")
+    if "treat" in text_l or "therapy" in text_l:
+        treatment = "Treatment options are referenced."
 
     if "prevent" in text_l:
-        prevention.append("Preventive guidance is available in the summary text.")
+        prevention = "Preventive guidance is mentioned."
 
     return symptoms, causes, treatment, prevention
 
@@ -68,27 +54,26 @@ class RAGEngine:
 
     def __init__(self):
         self.translator = GoogleTranslator(source="auto", target="en")
-        logger.info("Wikipedia-based RAG initialized.")
+        logger.info("Wikipedia-based RAG Engine initialized.")
 
     async def process_query(self, query: str, language: str = "en") -> Dict[str, Any]:
 
         original_query = query
-        processed_query = query
 
-        # Translate query → English
+        # Translate → English
+        processed_query = query
         if language != "en":
             try:
                 processed_query = self.translator.translate(query, target="en")
             except Exception:
-                processed_query = query
+                pass
 
-        # Fetch from Wikipedia
+        # Get Wikipedia summary
         summary = wiki_fetch(processed_query)
 
         if not summary:
-            answer = "I could not find detailed medical information about this condition."
             return {
-                "answer": answer,
+                "answer": "⚠️ I could not find medical information about this condition.",
                 "citations": [],
                 "original_query": original_query,
                 "processed_query": processed_query,
@@ -96,10 +81,10 @@ class RAGEngine:
                 "timestamp": datetime.utcnow().isoformat() + "Z",
             }
 
-        # Extract structured medical info
-        symptoms, causes, treatment, prevention = extract_sections(summary)
+        # Extract medical sections
+        symptoms, causes, treatment, prevention = extract_medical_sections(summary)
 
-        # ----------- BUILD ANSWER -------------
+        # Build answer
         answer_en = f"""
 📌 **Medical Information about {processed_query.title()}**
 
@@ -107,31 +92,37 @@ class RAGEngine:
 {summary}
 
 🩺 **Symptoms**
-- {symptoms[0] if symptoms else "Not specifically listed. Symptoms differ by individual and subtype."}
+- {symptoms}
 
 ⚠️ **Causes**
-- {causes[0] if causes else "Causes not clearly listed. May require more detailed clinical sources."}
+- {causes}
 
 💊 **Treatment**
-- {treatment[0] if treatment else "Treatment not clearly listed. Consult a certified medical provider."}
+- {treatment}
 
 🛡️ **Prevention / Precautions**
-- {prevention[0] if prevention else "General health precautions may apply: hygiene, sanitation, vaccinations (if applicable), and regular checkups."}
+- {prevention}
 
-⚠️ *This bot provides educational health information only. For diagnosis or treatment, please consult a healthcare professional.*
-        """
+⚠️ This bot provides educational health information only.  
+Consult a doctor for diagnosis or treatment.
+"""
 
-        # Translate answer back to user language
+        # Translate back
         final_answer = answer_en
         if language != "en":
             try:
                 final_answer = self.translator.translate(answer_en, target=language)
             except:
-                final_answer = answer_en
+                pass
 
         return {
             "answer": final_answer,
-            "citations": [{"source": "Wikipedia", "url": f"https://en.wikipedia.org/wiki/{processed_query.replace(' ', '_')}"}],
+            "citations": [
+                {
+                    "source": "Wikipedia",
+                    "url": f"https://en.wikipedia.org/wiki/{processed_query.replace(' ', '_')}"
+                }
+            ],
             "original_query": original_query,
             "processed_query": processed_query,
             "language": language,

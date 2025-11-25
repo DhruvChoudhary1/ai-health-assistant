@@ -9,6 +9,10 @@ from dotenv import load_dotenv
 import logging
 
 from rag_engine import RAGEngine
+import sys
+logger = logging.getLogger("uvicorn.error")
+logger.setLevel(logging.DEBUG)
+
 
 # Load environment variables
 load_dotenv()

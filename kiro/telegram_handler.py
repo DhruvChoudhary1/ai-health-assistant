@@ -13,46 +13,50 @@ from telegram.ext import (
 
 from rag_engine import RAGEngine
 
+# --------------------------------
+# Setup
+# --------------------------------
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("telegram_bot")
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TELEGRAM_BOT_TOKEN:
-    raise RuntimeError("TELEGRAM_BOT_TOKEN not set in .env")
+    raise RuntimeError("Missing TELEGRAM_BOT_TOKEN in .env")
 
-# Local RAG engine for Telegram
+# Use same lightweight wiki-based RAG
 rag_engine = RAGEngine()
 
-
+# --------------------------------
+# Handlers
+# --------------------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Hello! I am dr_haathi_bot 🐘💊\n"
-        "Your AI Health Assistant.\n\n"
-        "Ask me anything related to health!\n\n"
-        "Note: I provide educational information only, not medical advice."
+        "👋 Hello! I am dr_haathi_bot 🐘💊\n"
+        "Ask me anything related to health.\n\n"
+        "⚠️ I provide educational information only, not medical advice."
     )
 
-
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
+    query = update.message.text
     try:
-        response = await rag_engine.process_query(text, "en")
-        await update.message.reply_text(response["answer"])
+        result = await rag_engine.process_query(query, "en")
+        await update.message.reply_text(result["answer"])
     except Exception as e:
-        logger.error(f"Telegram error: {e}")
-        await update.message.reply_text("⚠️ Sorry, something went wrong. Try again later.")
+        logger.error(f"Telegram processing error: {e}")
+        await update.message.reply_text("⚠️ Something went wrong. Try again later.")
 
-
+# --------------------------------
+# Main entry
+# --------------------------------
 def main():
-    application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+    app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    logger.info("Starting Telegram bot polling ...")
-    application.run_polling()
-
+    logger.info("Starting Telegram polling...")
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
