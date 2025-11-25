@@ -35,6 +35,8 @@ def wiki_fetch(topic: str):
     Gets only the summary (fast & reliable).
     """
     url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{topic.replace(' ', '%20')}"
+    logger.warning(f"FETCHING FROM WIKI: {url}")
+
     try:
         res = requests.get(url, timeout=5)
         if res.status_code != 200:
