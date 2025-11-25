@@ -3,60 +3,94 @@ import re
 from datetime import datetime
 from typing import Dict, Any
 import requests
+from urllib.parse import quote
 from deep_translator import GoogleTranslator
 
 logger = logging.getLogger(__name__)
 
 
 # ---------------------------
+# SIMPLE QUERY → TOPIC CLEANING
+# ---------------------------
+def extract_topic_from_query(query: str) -> str:
+    """
+    Turn a user question into a clean Wikipedia title.
+    Examples:
+      "what is pneumonia" -> "pneumonia"
+      "tell me about dengue fever" -> "dengue fever"
+    """
+    q = query.strip().lower()
+
+    # remove common prefixes
+    q = re.sub(
+        r"^(what is|what's|what is a|what is an|tell me about|explain|define|info on|information on)\s+",
+        "",
+        q,
+        flags=re.I,
+    )
+
+    # remove question mark and extra punctuation
+    q = re.sub(r"[?\.,!]+$", "", q)
+
+    # keep only first 3 words to avoid super long titles
+    words = q.split()
+    topic = " ".join(words[:3]) if words else q
+
+    return topic or query
+
+
+# ---------------------------
 # CLEAN SECTION EXTRACTION
 # ---------------------------
-def extract_keyword_section(text: str, keywords: list, default: str):
+def extract_keyword_section(text: str, keywords: list, default: str) -> str:
     """
-    Extracts 1–2 clean sentences around keywords like:
-    symptoms, causes, treatment, prevention etc.
+    Extracts one sentence containing any of the given keywords.
+    Falls back to `default` if nothing matches.
     """
-    text_l = text.lower()
-    sentences = re.split(r'\. |\n', text)
-
+    sentences = re.split(r"\. |\n", text)
     for s in sentences:
         s_l = s.lower()
         if any(k in s_l for k in keywords):
             return s.strip()
-
     return default
 
 
 # ---------------------------
 # WIKIPEDIA SUMMARY FETCH
 # ---------------------------
-def wiki_fetch(topic: str):
-    url = f"https://en.wikipedia.org/api/rest_v1/page/plain/{topic.replace(' ', '%20')}"
+def wiki_fetch(raw_query: str) -> str | None:
+    """
+    Uses Wikipedia REST summary API.
+    Returns plain summary text or None.
+    """
+    topic = extract_topic_from_query(raw_query)
+    title_encoded = quote(topic)
+    url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{title_encoded}"
+
     logger.warning(f"FETCHING FROM WIKI: {url}")
 
     try:
         res = requests.get(url, timeout=5)
         if res.status_code != 200:
+            logger.warning(f"Wikipedia status {res.status_code}: {res.text[:200]}")
             return None
 
-        data = res.text  # plain text response
-        return data
-
+        data = res.json()
+        return data.get("extract")
     except Exception as e:
         logger.error(f"Wikipedia fetch error: {e}")
         return None
+
 
 # ---------------------------
 # MAIN RAG ENGINE
 # ---------------------------
 class RAGEngine:
-
     def __init__(self):
         self.translator = GoogleTranslator(source="auto", target="en")
         logger.info("Lightweight Wikipedia RAG initialized.")
 
     async def process_query(self, query: str, language: str = "en") -> Dict[str, Any]:
-
         original_query = query
         processed_query = query
 
@@ -85,36 +119,36 @@ class RAGEngine:
         symptoms = extract_keyword_section(
             summary,
             ["symptom", "signs", "cough", "fever", "pain"],
-            "Symptoms vary based on the specific condition subtype."
+            "Symptoms vary depending on the exact type and severity."
         )
 
         causes = extract_keyword_section(
             summary,
             ["cause", "caused", "due to", "results from"],
-            "Causes are not clearly mentioned in the summary."
+            "Causes are not clearly mentioned in this short summary."
         )
 
         treatment = extract_keyword_section(
             summary,
             ["treat", "treatment", "therapy", "managed"],
-            "Treatment details are not included. Consult a medical professional."
+            "Treatment details are not included here. Consult a medical professional."
         )
 
         prevention = extract_keyword_section(
             summary,
             ["prevent", "prevention", "avoid", "reduce risk"],
-            "General precautions include hygiene, healthy lifestyle, and early checkups."
+            "General precautions include hygiene, healthy lifestyle, and timely vaccination or screening (when available)."
         )
 
         complications = extract_keyword_section(
             summary,
             ["complication", "risk", "danger", "serious", "life-threatening"],
-            "Complications depend on severity and patient health."
+            "Possible complications depend on severity and the person’s overall health."
         )
 
         # ---------- Build final formatted response ----------
         answer_en = f"""
-📌 **Medical Information about {processed_query.title()}**
+📌 **Medical Information about {extract_topic_from_query(processed_query).title()}**
 
 📖 **Definition**  
 {definition}
@@ -134,7 +168,7 @@ class RAGEngine:
 ❗ **Complications**  
 - {complications}
 
-⚠️ *This assistant provides educational information only. It is not a substitute for professional medical advice.*
+⚠️ *This assistant provides educational information only. It is not a substitute for professional medical advice, diagnosis, or treatment.*
         """
 
         # Translate back
@@ -142,14 +176,16 @@ class RAGEngine:
         if language != "en":
             try:
                 final_answer = self.translator.translate(answer_en, target=language)
-            except:
+            except Exception:
                 final_answer = answer_en
+
+        topic = extract_topic_from_query(processed_query)
 
         return {
             "answer": final_answer,
             "citations": [{
                 "source": "Wikipedia",
-                "url": f"https://en.wikipedia.org/wiki/{processed_query.replace(' ', '_')}"
+                "url": f"https://en.wikipedia.org/wiki/{topic.replace(' ', '_')}"
             }],
             "original_query": original_query,
             "processed_query": processed_query,
