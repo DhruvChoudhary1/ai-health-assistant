@@ -150,48 +150,48 @@ class RAGEngine:
 
         # Final formatted message
         answer_en = f"""
-🔍 **Medical Information: {processed_query.title()}**
+🔍Medical Information: {processed_query.title()}
 
----
 
-### 📘 **Definition**
+
+📘Definition
 {definition}
 
----
 
-### 🩺 **Symptoms**
+
+🩺Symptoms
 • {symptoms}
 
----
 
-### ⚠️ **Causes**
+
+⚠️Causes
 • {causes}
 
----
 
-### 💊 **Treatment**
+
+💊Treatment
 • {treatment}
 
----
 
-### 🛡️ **Prevention & Precautions**
+
+🛡️Prevention & Precautions
 • {prevention}
 
----
 
-### ❗ **Possible Complications**
+
+❗Possible Complications 
 • {complications}
 
----
 
-### 📚 **Source**
+
+📚Source
 🔗 https://en.wikipedia.org/wiki/{processed_query.replace(" ", "_")}
 
----
 
-### ⚠️ **Disclaimer**
-This assistant provides **educational health information only**.  
-It is **not** a substitute for professional medical advice, diagnosis, or treatment.
+
+⚠️Disclaimer
+This assistant provides educational health information only.  
+It is not a substitute for professional medical advice, diagnosis, or treatment.
 
 """
 
