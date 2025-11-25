@@ -1,80 +1,49 @@
 import logging
 import re
-import requests
 from datetime import datetime
 from typing import Dict, Any
+import requests
 from deep_translator import GoogleTranslator
 
 logger = logging.getLogger(__name__)
 
+
 # ---------------------------
-# WIKIPEDIA FREE SEARCH
+# CLEAN SECTION EXTRACTION
+# ---------------------------
+def extract_keyword_section(text: str, keywords: list, default: str):
+    """
+    Extracts 1–2 clean sentences around keywords like:
+    symptoms, causes, treatment, prevention etc.
+    """
+    text_l = text.lower()
+    sentences = re.split(r'\. |\n', text)
+
+    for s in sentences:
+        s_l = s.lower()
+        if any(k in s_l for k in keywords):
+            return s.strip()
+
+    return default
+
+
+# ---------------------------
+# WIKIPEDIA SUMMARY FETCH
 # ---------------------------
 def wiki_fetch(topic: str):
+    """
+    Gets only the summary (fast & reliable).
+    """
+    url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{topic.replace(' ', '%20')}"
     try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (HealthBot/1.0; +https://render.com)"
-        }
-
-        # Step 1 — Search for the best match
-        search_url = "https://en.wikipedia.org/w/api.php"
-        params = {
-            "action": "query",
-            "list": "search",
-            "srsearch": topic,
-            "format": "json"
-        }
-
-        search_res = requests.get(search_url, params=params, headers=headers, timeout=5)
-
-        if search_res.status_code != 200:
+        res = requests.get(url, timeout=5)
+        if res.status_code != 200:
             return None
-
-        search_data = search_res.json()
-
-        if "query" not in search_data or len(search_data["query"]["search"]) == 0:
-            return None
-
-        # Best matched page title
-        title = search_data["query"]["search"][0]["title"]
-
-        # Step 2 — Fetch summary for exact page
-        summary_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{title.replace(' ', '%20')}"
-        summary_res = requests.get(summary_url, headers=headers, timeout=5)
-
-        if summary_res.status_code != 200:
-            return None
-
-        return summary_res.json().get("extract")
-
+        data = res.json()
+        return data.get("extract")
     except Exception as e:
-        print("WIKI ERROR:", e)
+        logger.error(f"Wikipedia fetch error: {e}")
         return None
-
-# ---------------------------
-# BASIC MEDICAL INFO EXTRACTION
-# ---------------------------
-def extract_medical_sections(text: str):
-    text_l = text.lower()
-
-    symptoms = "Not specifically listed."
-    causes = "Causes not clearly listed."
-    treatment = "Treatment not clearly listed."
-    prevention = "General health precautions apply."
-
-    if "symptom" in text_l:
-        symptoms = "Symptoms are mentioned in the summary."
-
-    if "cause" in text_l or "caused" in text_l:
-        causes = "Causes appear in the summary text."
-
-    if "treat" in text_l or "therapy" in text_l:
-        treatment = "Treatment options are referenced."
-
-    if "prevent" in text_l:
-        prevention = "Preventive guidance is mentioned."
-
-    return symptoms, causes, treatment, prevention
 
 
 # ---------------------------
@@ -84,23 +53,22 @@ class RAGEngine:
 
     def __init__(self):
         self.translator = GoogleTranslator(source="auto", target="en")
-        logger.info("Wikipedia-based RAG Engine initialized.")
+        logger.info("Lightweight Wikipedia RAG initialized.")
 
     async def process_query(self, query: str, language: str = "en") -> Dict[str, Any]:
 
         original_query = query
-
-        # Translate → English
         processed_query = query
+
+        # Translate query → English
         if language != "en":
             try:
                 processed_query = self.translator.translate(query, target="en")
             except Exception:
-                pass
+                processed_query = query
 
-        # Get Wikipedia summary
+        # Fetch from Wikipedia summary
         summary = wiki_fetch(processed_query)
-
         if not summary:
             return {
                 "answer": "⚠️ I could not find medical information about this condition.",
@@ -111,31 +79,63 @@ class RAGEngine:
                 "timestamp": datetime.utcnow().isoformat() + "Z",
             }
 
-        # Extract medical sections
-        symptoms, causes, treatment, prevention = extract_medical_sections(summary)
+        # --- Extract structured sections ---
+        definition = summary
 
-        # Build answer
+        symptoms = extract_keyword_section(
+            summary,
+            ["symptom", "signs", "cough", "fever", "pain"],
+            "Symptoms vary based on the specific condition subtype."
+        )
+
+        causes = extract_keyword_section(
+            summary,
+            ["cause", "caused", "due to", "results from"],
+            "Causes are not clearly mentioned in the summary."
+        )
+
+        treatment = extract_keyword_section(
+            summary,
+            ["treat", "treatment", "therapy", "managed"],
+            "Treatment details are not included. Consult a medical professional."
+        )
+
+        prevention = extract_keyword_section(
+            summary,
+            ["prevent", "prevention", "avoid", "reduce risk"],
+            "General precautions include hygiene, healthy lifestyle, and early checkups."
+        )
+
+        complications = extract_keyword_section(
+            summary,
+            ["complication", "risk", "danger", "serious", "life-threatening"],
+            "Complications depend on severity and patient health."
+        )
+
+        # ---------- Build final formatted response ----------
         answer_en = f"""
 📌 **Medical Information about {processed_query.title()}**
 
-📖 **Definition**
-{summary}
+📖 **Definition**  
+{definition}
 
-🩺 **Symptoms**
+🩺 **Symptoms**  
 - {symptoms}
 
-⚠️ **Causes**
+⚠️ **Causes**  
 - {causes}
 
-💊 **Treatment**
+💊 **Treatment**  
 - {treatment}
 
-🛡️ **Prevention / Precautions**
+🛡️ **Prevention / Precautions**  
 - {prevention}
 
-⚠️ This bot provides educational health information only.  
-Consult a doctor for diagnosis or treatment.
-"""
+❗ **Complications**  
+- {complications}
+
+⚠️ *This assistant provides educational information only. It is not a substitute for professional medical advice.*
+        """
 
         # Translate back
         final_answer = answer_en
@@ -143,16 +143,14 @@ Consult a doctor for diagnosis or treatment.
             try:
                 final_answer = self.translator.translate(answer_en, target=language)
             except:
-                pass
+                final_answer = answer_en
 
         return {
             "answer": final_answer,
-            "citations": [
-                {
-                    "source": "Wikipedia",
-                    "url": f"https://en.wikipedia.org/wiki/{processed_query.replace(' ', '_')}"
-                }
-            ],
+            "citations": [{
+                "source": "Wikipedia",
+                "url": f"https://en.wikipedia.org/wiki/{processed_query.replace(' ', '_')}"
+            }],
             "original_query": original_query,
             "processed_query": processed_query,
             "language": language,
