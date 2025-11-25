@@ -58,25 +58,25 @@ def extract_keyword_section(text: str, keywords: list, default: str) -> str:
 # ---------------------------
 # WIKIPEDIA SUMMARY FETCH
 # ---------------------------
-def wiki_fetch(raw_query: str) -> str | None:
-    """
-    Uses Wikipedia REST summary API.
-    Returns plain summary text or None.
-    """
-    topic = extract_topic_from_query(raw_query)
-    title_encoded = quote(topic)
-    url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{title_encoded}"
-
-    logger.warning(f"FETCHING FROM WIKI: {url}")
-
+def wiki_fetch(topic: str):
+    url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{topic.replace(' ', '%20')}"
+    headers = {
+        "User-Agent": "AIHealthAssistant/1.0 (https://ai-health-assistant-l2l8.onrender.com/; dhruv@example.com)"
+    }
     try:
-        res = requests.get(url, timeout=5)
-        if res.status_code != 200:
-            logger.warning(f"Wikipedia status {res.status_code}: {res.text[:200]}")
+        logger.warning(f"FETCHING FROM WIKI: {url}")
+        res = requests.get(url, headers=headers, timeout=10)
+
+        if res.status_code == 403:
+            logger.error("Wikipedia blocked request: 403 Forbidden — User-Agent required.")
             return None
 
-        data = res.json()
-        return data.get("extract")
+        if res.status_code != 200:
+            logger.error(f"Wiki status {res.status_code}")
+            return None
+
+        return res.json().get("extract")
+
     except Exception as e:
         logger.error(f"Wikipedia fetch error: {e}")
         return None
