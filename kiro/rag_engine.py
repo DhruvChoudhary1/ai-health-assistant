@@ -3,8 +3,6 @@ import re
 from datetime import datetime
 from typing import Dict, Any, List
 from deep_translator import GoogleTranslator
-from wiki_search import wiki_search
-from medical_formatter import format_medical_info
 
 logger = logging.getLogger(__name__)
 
