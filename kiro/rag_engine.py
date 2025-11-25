@@ -12,8 +12,12 @@ logger = logging.getLogger(__name__)
 # ---------------------------
 def wiki_fetch(topic: str):
     try:
-        # Step 1 — Search first
-        search_url = f"https://en.wikipedia.org/w/api.php"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (HealthBot/1.0; +https://render.com)"
+        }
+
+        # Step 1 — Search for the best match
+        search_url = "https://en.wikipedia.org/w/api.php"
         params = {
             "action": "query",
             "list": "search",
@@ -21,27 +25,31 @@ def wiki_fetch(topic: str):
             "format": "json"
         }
 
-        search_res = requests.get(search_url, params=params, timeout=5)
+        search_res = requests.get(search_url, params=params, headers=headers, timeout=5)
+
+        if search_res.status_code != 200:
+            return None
+
         search_data = search_res.json()
 
         if "query" not in search_data or len(search_data["query"]["search"]) == 0:
             return None
 
-        # Top search result title
-        top_title = search_data["query"]["search"][0]["title"]
+        # Best matched page title
+        title = search_data["query"]["search"][0]["title"]
 
-        # Step 2 — Fetch summary of that title
-        summary_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{top_title.replace(' ', '%20')}"
-        summary_res = requests.get(summary_url, timeout=5)
+        # Step 2 — Fetch summary for exact page
+        summary_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{title.replace(' ', '%20')}"
+        summary_res = requests.get(summary_url, headers=headers, timeout=5)
 
         if summary_res.status_code != 200:
             return None
 
         return summary_res.json().get("extract")
 
-    except Exception:
+    except Exception as e:
+        print("WIKI ERROR:", e)
         return None
-
 
 # ---------------------------
 # BASIC MEDICAL INFO EXTRACTION
