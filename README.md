@@ -8,6 +8,7 @@ A conversational AI assistant for health-related queries, built with FastAPI, Te
 - Health knowledge base
 - Privacy-focused (no data stored)
 - Modern, responsive design
+- Easy to Use
 
 ## Getting Started
 1. Clone the repository.
