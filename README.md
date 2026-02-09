@@ -1,8 +1,4 @@
 ---
-
-# ✅ New README.md (Fully Updated & Professional)
-
-```md
 # 🌍 HARMONY – AI Health Assistant Chatbot  
 ### Healthcare AI for Responsive Multilingual Online Interaction System  
 
