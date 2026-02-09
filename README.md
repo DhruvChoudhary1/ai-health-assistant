@@ -1,67 +1,257 @@
-# AI Health Chatbot
+---
 
-A conversational AI assistant for health-related queries, built with FastAPI, Telegram integration, and RAG (Retrieval-Augmented Generation) engine.
+# ✅ New README.md (Fully Updated & Professional)
 
-## Features
-- Chatbot UI (web and Telegram)
-- Multilingual support
-- Health knowledge base
-- Privacy-focused (no data stored)
-- Modern, responsive design
-- Easy to Use
+```md
+# 🌍 HARMONY – AI Health Assistant Chatbot  
+### Healthcare AI for Responsive Multilingual Online Interaction System  
 
-## Getting Started
-1. Clone the repository.
-2. Create a virtual environment and install dependencies:
-   ```
-   python -m venv venv
-   source venv/bin/activate  # or venv\Scripts\activate on Windows
-   pip install -r requirements.txt
-   ```
-3. Add your Telegram bot token to a `.env` file:
-   ```
-   TELEGRAM_BOT_TOKEN=your_token_here
-   ```
-4. Run the web server:
-   ```
-   python main.py
-   ```
-5. Run the Telegram bot:
-   ```
-   python telegram_handler.py
-   ```
+HARMONY is a community-focused **AI-powered healthcare assistant chatbot** designed to provide reliable medical awareness and educational guidance through conversational interaction.  
 
-## Project Structure
-- `main.py` - FastAPI web server
-- `telegram_handler.py` - Telegram bot integration
-- `rag_engine.py` - RAG engine for health Q&A
-- `static/` - CSS, JS, and assets
-- `templates/` - HTML templates
-- `knowledge_base/` - Health documents
+Built with **FastAPI**, integrated with **Telegram**, and powered by a lightweight **Wikipedia-based Retrieval-Augmented Generation (RAG)** engine, HARMONY ensures accessible healthcare support for users anytime, anywhere.
 
-## How Kiro Was Used in This Project
+---
 
-This project was built using the **Kiro** framework, which provided a modular and scalable foundation for developing the AI Health Assistant. Kiro was instrumental in organizing the codebase, managing dependencies, and streamlining the integration of various components such as the RAG engine, Telegram bot handler, and translation services.
+## ✨ Key Highlights
 
-### Key Roles of Kiro in the Project
+✅ AI-driven Health Chatbot (Web + Telegram)  
+✅ Multilingual Query Support (English, Hindi, Spanish, French)  
+✅ Wikipedia REST API powered Medical Retrieval  
+✅ Structured Responses (Definition, Symptoms, Causes, Treatment, Prevention)  
+✅ Privacy-Friendly (No user conversations stored)  
+✅ Dockerized Deployment for Portability  
+✅ Community-Oriented EPICS Healthcare Awareness Project  
 
-- **Project Structure:** Kiro helped maintain a clean and organized directory structure, making it easier to manage source code, static files, templates, and configuration.
-- **Dependency Management:** By leveraging Kiro’s setup, all required Python packages and modules were efficiently managed through the `requirements.txt` file.
-- **Integration:** Kiro facilitated the seamless integration of third-party libraries like `deep_translator` and `python-telegram-bot`, enabling advanced features such as multilingual support and real-time chat interactions.
-- **Extensibility:** The modular nature of Kiro allowed for easy addition of new features and components, such as the RAG engine for retrieval-augmented generation and custom handlers for Telegram interactions.
+---
 
-### Getting Started with Kiro
+## 🚀 Features
 
-To replicate or extend this project, simply follow the setup instructions provided in the repository. Make sure to install all dependencies and activate the virtual environment as described.
+### 🩺 Medical Information Assistance  
+Users can ask about diseases such as:
 
-Kiro’s robust foundation ensures that the project remains maintainable, extensible, and easy to collaborate on.
+- Jaundice  
+- Diabetes  
+- Dengue  
+- Malaria  
+- Fever & common symptoms  
 
-### Category
+The assistant responds with structured and easy-to-understand health information.
 
-I'm submitting to Wildcard/Freestyle category. 
+---
 
-## Contributing
-Pull requests and suggestions are welcome!
+### 🌐 Multilingual Support  
+HARMONY accepts queries in:
 
-## License
-MIT
+- English 🇺🇸  
+- Hindi 🇮🇳  
+- Spanish 🇪🇸  
+- French 🇫🇷  
+
+(Currently responses are shown in English; multilingual output is part of future scope.)
+
+---
+
+### 🤖 Telegram Bot Integration  
+HARMONY is available directly through Telegram, allowing users to chat without installing any additional application.
+
+---
+
+### 🐳 Docker Deployment  
+The entire project is containerized for easy deployment across platforms.
+
+---
+
+## 🛠️ Tech Stack
+
+| Component | Technology |
+|----------|------------|
+| Backend | FastAPI (Python) |
+| Retrieval Engine | Wikipedia REST API (Lightweight RAG) |
+| Translation | deep-translator (GoogleTranslator) |
+| Bot Platform | Telegram Bot API |
+| Deployment | Docker |
+| Frontend | HTML, CSS, JavaScript |
+
+---
+
+## 📂 Project Structure
+
+```
+
+ai-health-assistant/
+│
+├── main.py                 # FastAPI backend server
+├── telegram_handler.py     # Telegram bot integration
+├── rag_engine.py           # Wikipedia-based RAG engine
+├── medical_formatter.py    # Structured medical response formatter
+│
+├── templates/              # HTML templates for Web UI
+├── static/                 # CSS, JS, assets
+├── knowledge_base/         # Future expansion datasets
+│
+├── Dockerfile              # Container deployment config
+├── requirements.txt        # Project dependencies
+└── README.md               # Documentation
+
+````
+
+---
+
+## ⚙️ Getting Started
+
+### 1️⃣ Clone the Repository
+```bash
+git clone https://github.com/your-username/harmony-ai-health-assistant.git
+cd harmony-ai-health-assistant
+````
+
+---
+
+### 2️⃣ Create Virtual Environment
+
+```bash
+python -m venv venv
+source venv/bin/activate        # On Linux/Mac
+venv\Scripts\activate           # On Windows
+```
+
+---
+
+### 3️⃣ Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+### 4️⃣ Configure Environment Variables
+
+Create a `.env` file:
+
+```env
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+SUPPORTED_LANGUAGES=en,hi,es,fr
+```
+
+---
+
+### 5️⃣ Run Web Application
+
+```bash
+python main.py
+```
+
+Open in browser:
+
+👉 [http://localhost:8000](http://localhost:8000)
+
+---
+
+### 6️⃣ Run Telegram Bot
+
+```bash
+python telegram_handler.py
+```
+
+Now you can chat with HARMONY directly on Telegram.
+
+---
+
+## 🐳 Run Using Docker
+
+### Build Docker Image
+
+```bash
+docker build -t harmony_bot .
+```
+
+### Run Container
+
+```bash
+docker run -d -p 8000:8000 --name harmony_bot harmony_bot
+```
+
+HARMONY will be live at:
+
+👉 [http://localhost:8000](http://localhost:8000)
+
+---
+
+## 🔍 How HARMONY Works (Wikipedia RAG Pipeline)
+
+1. User enters a health query
+2. Query is translated into English (if needed)
+3. Topic is extracted from the question
+4. Wikipedia REST API retrieves medical summary
+5. Response is formatted into structured sections
+6. Output is delivered via Web UI or Telegram
+
+---
+
+## 🔮 Future Scope
+
+Planned enhancements include:
+
+* 🌍 Multilingual Output Translation
+* 🎙️ Voice-based Interaction (Speech-to-Text & Text-to-Speech)
+* 📚 Larger Verified Medical Dataset Integration
+* 🧠 Advanced Symptom Checker Module
+
+---
+
+## 🏆 Submission Category
+
+This project is submitted under:
+
+### **Wildcard / Freestyle Category**
+
+---
+
+## 🤝 Contributing
+
+Contributions, suggestions, and pull requests are welcome!
+Feel free to fork the repository and improve HARMONY.
+
+---
+
+## 📜 License
+
+This project is licensed under the **MIT License**.
+
+---
+
+## ⚠️ Disclaimer
+
+HARMONY provides **educational health information only**.
+It is **not a substitute for professional medical advice, diagnosis, or treatment**.
+Always consult a certified healthcare provider for medical concerns.
+
+---
+
+### 🌟 HARMONY – Bringing Healthcare Awareness Through AI 🌟
+
+```
+
+---
+
+# ✅ Done: README Completely Transformed
+
+This version looks:
+
+- Professional  
+- Competition-ready  
+- Clearly explains Wikipedia RAG + Docker  
+- Proper branding with HARMONY  
+- Strong structure + disclaimer  
+
+---
+
+If you want, I can also generate:
+
+✅ GitHub badges (FastAPI, Docker, License)  
+✅ A more stylish README with screenshots embedded  
+✅ Deployment guide for Render/Railway  
+
+Just tell me 😄🔥
+```
