@@ -14,22 +14,47 @@ import re
 from local_llm import LocalLLM, HealthKnowledgeBase
 
 logger = logging.getLogger(__name__)
-def translate_text(text, target='en'):
-    return GoogleTranslator(source='auto', target=target).translate(text)
+
+
+def translate_text(text, target="en"):
+    """Helper for simple one-off translations."""
+    return GoogleTranslator(source="auto", target=target).translate(text)
 
 class RAGEngine:
     def __init__(self):
         self.client = None
         self.collection = None
         self.embedding_model = None
-        self.translator = GoogleTranslator()
+        # Default translator; we will re-create with specific languages when needed
+        self.translator = GoogleTranslator(source="auto", target="en")
         # Use free alternatives
         self.local_llm = LocalLLM()
         self.health_kb = HealthKnowledgeBase()
         self.hf_headers = {"Authorization": f"Bearer {os.getenv('HUGGINGFACE_API_KEY', 'hf_demo')}"}
-        
+        # Simple medicine knowledge base for /medicine queries
+        self.medicine_info = {
+            "paracetamol": {
+                "uses": ["fever", "mild to moderate pain"],
+                "dosage": "Usually 500–650 mg every 4–6 hours as needed (do not exceed 3,000–4,000 mg per day in adults; follow local guidelines).",
+                "side_effects": [
+                    "nausea",
+                    "allergic reactions (rare)",
+                    "liver damage in overdose or with chronic heavy use",
+                ],
+            },
+            "ibuprofen": {
+                "uses": ["pain", "inflammation", "fever"],
+                "dosage": "Typically 200–400 mg every 6–8 hours with food (maximum daily dose depends on local guidelines; follow package or doctor instructions).",
+                "side_effects": [
+                    "stomach irritation",
+                    "heartburn",
+                    "kidney strain in dehydration or long-term high doses",
+                ],
+            },
+        }
+
     async def initialize(self):
-        """Initialize the RAG engine components"""
+        """Initialize the RAG engine components and load medical knowledge base."""
         try:
             # Initialize ChromaDB
             persist_directory = os.getenv("CHROMA_PERSIST_DIRECTORY", "./chroma_db")
@@ -60,73 +85,100 @@ class RAGEngine:
             raise
     
     async def _load_knowledge_base(self):
-        """Load health knowledge base into vector database"""
-        # Sample health knowledge base
-        health_documents = [
-            {
-                "id": "doc_1",
-                "content": "Diabetes is a chronic condition that affects how your body processes blood sugar (glucose). Type 1 diabetes occurs when your immune system attacks insulin-producing cells. Type 2 diabetes occurs when your body becomes resistant to insulin or doesn't make enough insulin.",
-                "source": "WHO Diabetes Fact Sheet 2023",
-                "category": "diabetes",
-                "url": "https://www.who.int/news-room/fact-sheets/detail/diabetes"
-            },
-            {
-                "id": "doc_2", 
-                "content": "Hypertension (high blood pressure) is a serious medical condition that significantly increases the risks of heart, brain, kidney and other diseases. Blood pressure is measured in millimeters of mercury (mmHg) and is recorded as two numbers: systolic pressure (when the heart beats) over diastolic pressure (when the heart rests between beats).",
-                "source": "American Heart Association Guidelines 2023",
-                "category": "hypertension",
-                "url": "https://www.heart.org/en/health-topics/high-blood-pressure"
-            },
-            {
-                "id": "doc_3",
-                "content": "Regular physical activity is one of the most important things you can do for your health. It can help control your weight, reduce your risk of heart disease, strengthen your bones and muscles, and improve your mental health and mood. Adults should aim for at least 150 minutes of moderate-intensity aerobic activity per week.",
-                "source": "CDC Physical Activity Guidelines 2023",
-                "category": "exercise",
-                "url": "https://www.cdc.gov/physicalactivity/basics/adults/index.htm"
-            },
-            {
-                "id": "doc_4",
-                "content": "A balanced diet includes a variety of foods from all food groups: fruits, vegetables, whole grains, lean proteins, and healthy fats. Limiting processed foods, added sugars, and excessive sodium can help prevent chronic diseases and maintain optimal health.",
-                "source": "Harvard School of Public Health 2023",
-                "category": "nutrition",
-                "url": "https://www.hsph.harvard.edu/nutritionsource/healthy-eating-plate/"
-            },
-            {
-                "id": "doc_5",
-                "content": "Mental health includes our emotional, psychological, and social well-being. It affects how we think, feel, and act. Good mental health is essential at every stage of life. Common mental health conditions include depression, anxiety disorders, and stress-related disorders.",
-                "source": "National Institute of Mental Health 2023",
-                "category": "mental_health",
-                "url": "https://www.nimh.nih.gov/health/topics/mental-health-information"
+        """Load health knowledge base into vector database from JSON files."""
+        base_dir = os.path.dirname(__file__)
+        kb_dir = os.path.join(base_dir, "knowledge_base")
+        documents: list[dict[str, Any]] = []
+
+        # Load primary structured health documents if available
+        json_path = os.path.join(kb_dir, "health_documents.json")
+        if os.path.exists(json_path):
+            try:
+                with open(json_path, "r", encoding="utf-8") as f:
+                    docs_from_json = json.load(f)
+                    if isinstance(docs_from_json, list):
+                        documents.extend(docs_from_json)
+            except Exception as e:
+                logger.warning(f"Failed to load health_documents.json: {e}")
+
+        # Fallback: add a few core documents if JSON is missing/empty
+        if not documents:
+            documents = [
+                {
+                    "id": "core_diabetes",
+                    "title": "Diabetes Overview",
+                    "content": "Diabetes is a chronic condition that affects how your body processes blood sugar (glucose). Type 1 diabetes is autoimmune; Type 2 is due to insulin resistance.",
+                    "source": "WHO Diabetes Fact Sheet 2023",
+                    "category": "diseases",
+                    "url": "https://www.who.int/news-room/fact-sheets/detail/diabetes",
+                    "language": "en",
+                }
+            ]
+
+        if not documents:
+            logger.warning("No health documents found for knowledge base.")
+            return
+
+        added = 0
+        for doc in documents:
+            content = doc.get("content")
+            doc_id = doc.get("id") or f"kb_{added}"
+            if not content:
+                continue
+
+            embedding = self.embedding_model.encode(content).tolist()
+
+            metadata = {
+                "source": doc.get("source", "medical_knowledge_base"),
+                "category": doc.get("category", "general"),
+                "url": doc.get("url", ""),
+                "title": doc.get("title", ""),
+                "language": doc.get("language", "en"),
             }
-        ]
-        
-        # Generate embeddings and store documents
-        for doc in health_documents:
-            embedding = self.embedding_model.encode(doc["content"]).tolist()
-            
+
             self.collection.add(
                 embeddings=[embedding],
-                documents=[doc["content"]],
-                metadatas=[{
-                    "source": doc["source"],
-                    "category": doc["category"],
-                    "url": doc["url"]
-                }],
-                ids=[doc["id"]]
+                documents=[content],
+                metadatas=[metadata],
+                ids=[doc_id],
             )
-        
-        logger.info(f"Loaded {len(health_documents)} documents into knowledge base")
+            added += 1
+
+        logger.info(f"Loaded {added} documents into medical knowledge base")
     
-    async def process_query(self, query: str, language: str = "en") -> Dict[str, Any]:
-        """Process user query and return RAG-based response"""
+    async def process_query(
+        self,
+        query: str,
+        language: str = "en",
+        history: List[Dict[str, str]] | None = None,
+    ) -> Dict[str, Any]:
+        """Process user query and return RAG-based response with basic triage and memory."""
         try:
             # Translate query to English if needed
             original_query = query
             if language != "en":
-                query = self.translator.translate(query, src=language, dest="en").text
+                translator = GoogleTranslator(source=language, target="en")
+                query = translator.translate(query)
+
+            # Prepend brief conversation history, if available
+            if history:
+                # Keep only last few exchanges to stay concise
+                recent = history[-4:]
+                history_snippets = []
+                for turn in recent:
+                    role = turn.get("role", "user")
+                    content = turn.get("content", "")
+                    history_snippets.append(f"{role.capitalize()}: {content}")
+                history_text = "\n".join(history_snippets)
+                query_with_context = f"Conversation so far:\n{history_text}\n\nCurrent question: {query}"
+            else:
+                query_with_context = query
+
+            # Symptom triage (very simple heuristic)
+            triage = self._analyze_symptom_risk(query)
             
             # Generate query embedding
-            query_embedding = self.embedding_model.encode(query).tolist()
+            query_embedding = self.embedding_model.encode(query_with_context).tolist()
             
             # Retrieve relevant documents
             results = self.collection.query(
@@ -153,19 +205,28 @@ class RAGEngine:
                         "relevance_score": round(1 - distance, 3)
                     })
             
-            # Generate response using OpenAI
+            # Generate response
             context = "\n\n".join(context_docs)
-            response = await self._generate_response(query, context)
+            response_text = await self._generate_response(query, context)
+
+            # Attach triage banner if applicable
+            if triage:
+                banner = (
+                    f"🚨 Risk Level: {triage['risk_level'].upper()}\n"
+                    f"{triage['message']}\n\n"
+                )
+                response_text = banner + response_text
             
             # Translate response back to original language if needed
             if language != "en":
-                response = self.translator.translate(response, src="en", dest=language).text
+                back_translator = GoogleTranslator(source="en", target=language)
+                response_text = back_translator.translate(response_text)
             
             return {
-                "answer": response,
+                "answer": response_text,
                 "citations": citations,
                 "original_query": original_query,
-                "processed_query": query,
+                "processed_query": query_with_context,
                 "language": language,
                 "timestamp": datetime.now().isoformat()
             }
@@ -211,6 +272,53 @@ class RAGEngine:
         except Exception as e:
             logger.error(f"Error generating response: {str(e)}")
             return "I'm sorry, I couldn't generate a response at this time. Please consult with a healthcare professional for medical advice."
+
+    def _analyze_symptom_risk(self, text: str) -> Dict[str, Any] | None:
+        """Very simple symptom triage: flag obviously dangerous patterns."""
+        lowered = text.lower()
+        emergencies_high = [
+            "chest pain",
+            "difficulty breathing",
+            "shortness of breath",
+            "can't breathe",
+            "cannot breathe",
+            "severe headache",
+            "sudden weakness",
+            "stroke",
+            "unconscious",
+            "not waking up",
+            "heavy bleeding",
+        ]
+        emergencies_medium = [
+            "high fever",
+            "fever for 3 days",
+            "vomiting blood",
+            "blood in stool",
+            "severe abdominal pain",
+        ]
+
+        for phrase in emergencies_high:
+            if phrase in lowered:
+                return {
+                    "risk_level": "high",
+                    "message": (
+                        "These symptoms may indicate a serious condition. "
+                        "Please seek emergency medical help immediately or go to the nearest hospital."
+                    ),
+                }
+
+        for phrase in emergencies_medium:
+            if phrase in lowered:
+                return {
+                    "risk_level": "medium",
+                    "message": (
+                        "Your symptoms could be significant. "
+                        "Please monitor closely and seek medical care as soon as possible, "
+                        "especially if they worsen."
+                    ),
+                }
+
+        return None
     
     def _create_contextual_response(self, query: str, context: str) -> str:
         """Create response using context and rule-based approach"""

@@ -214,7 +214,8 @@ class HealthChatbot {
             'en': 'English',
             'hi': 'हिंदी (Hindi)',
             'es': 'Español (Spanish)',
-            'fr': 'Français (French)'
+            'fr': 'Français (French)',
+            'ar': 'العربية (Arabic)'
         };
         
         const message = `Language changed to ${languageNames[this.currentLanguage]}. You can now ask questions in this language.`;

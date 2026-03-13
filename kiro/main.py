@@ -89,7 +89,8 @@ async def get_supported_languages():
             {"code": "en", "name": "English"},
             {"code": "hi", "name": "हिंदी"},
             {"code": "es", "name": "Español"},
-            {"code": "fr", "name": "Français"}
+            {"code": "fr", "name": "Français"},
+            {"code": "ar", "name": "العربية"},
         ]
     }
 
