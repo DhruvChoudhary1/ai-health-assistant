@@ -1,66 +1,75 @@
-# AI Health Chatbot
+# AI Health Assistant
 
-A conversational AI assistant for health-related queries, built with FastAPI, Telegram integration, and RAG (Retrieval-Augmented Generation) engine.
+AI-powered health assistant with a FastAPI web app, embeddable web widget, Telegram bot, retrieval-augmented answers, disease prediction, and nearby hospital lookup.
 
-## Features
-- Chatbot UI (web and Telegram)
-- Multilingual support
-- Health knowledge base
-- Privacy-focused (no data stored)
-- Modern, responsive design
+## Current Features
+- Web chat UI with multilingual input (`en`, `hi`, `es`, `fr`, `ar`)
+- Telegram bot with health commands (`/symptoms`, `/medicine`, `/hospital`, `/voice`, `/report`, `/history`)
+- RAG engine with ChromaDB + sentence-transformers for knowledge-grounded answers
+- Local/LLM-assisted response generation (rule-based + optional local model paths)
+- Disease prediction endpoint from symptom list (`/predict-disease`)
+- Nearby hospital search from live internet data (OpenStreetMap/Nominatim)
+  - Backend enforces a fixed 100 km search radius
+- Medical report support (PDF text extraction + OCR for images; optional dependencies)
+- Voice symptom flow in Telegram (Whisper, optional)
+- Basic health logging in Telegram (`/log_weight`, `/log_bp`, `/log_sugar`)
 
-## Getting Started
-1. Clone the repository.
-2. Create a virtual environment and install dependencies:
+## Setup
+1. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv311
+   # Windows PowerShell
+   venv311\Scripts\Activate
    ```
-   python -m venv venv
-   source venv/bin/activate  # or venv\Scripts\activate on Windows
+2. Install dependencies:
+   ```bash
    pip install -r requirements.txt
    ```
-3. Add your Telegram bot token to a `.env` file:
-   ```
+3. Create `.env` with required values:
+   ```env
    TELEGRAM_BOT_TOKEN=your_token_here
+   # optional
+   HUGGINGFACE_API_KEY=your_key_here
+   USE_LOCAL_LLM=false
+   HOST=0.0.0.0
+   PORT=8000
+   DEBUG=true
    ```
-4. Run the web server:
-   ```
-   python main.py
-   ```
-5. Run the Telegram bot:
-   ```
-   python telegram_handler.py
-   ```
+
+## Run
+- Start API + Telegram bot together:
+  ```bash
+  python main.py
+  ```
+- API default URL: `http://localhost:8000`
+
+## API Endpoints
+- `GET /` - Web chat UI page
+- `POST /chat` - Main chat endpoint
+  - body: `{ "message": "...", "language": "en" }`
+- `POST /predict-disease` - Predict disease from symptoms
+  - body: `{ "symptoms": ["itching", "skin_rash"] }`
+- `GET /hospitals?lat=<lat>&lon=<lon>` - Nearby hospitals lookup (fixed 100 km backend radius)
+  - aliases: `/nearby-hospitals`, `/nearby_hospitals`, `/api/hospitals`
+- `GET /languages` - Supported UI languages
+- `GET /health` - Health-check endpoint
+
+## Important Notes
+- Hospital results are fetched online from OpenStreetMap; internet is required.
+- Some features are optional and require extra packages/tools:
+  - Voice: `openai-whisper`
+  - PDF parsing: `pdfplumber`
+  - OCR: `pytesseract` + Tesseract installed on system
+- Current health logs in Telegram are in-memory (not persistent across restarts).
 
 ## Project Structure
-- `main.py` - FastAPI web server
-- `telegram_handler.py` - Telegram bot integration
-- `rag_engine.py` - RAG engine for health Q&A
-- `static/` - CSS, JS, and assets
-- `templates/` - HTML templates
-- `knowledge_base/` - Health documents
-
-## How Kiro Was Used in This Project
-
-This project was built using the **Kiro** framework, which provided a modular and scalable foundation for developing the AI Health Assistant. Kiro was instrumental in organizing the codebase, managing dependencies, and streamlining the integration of various components such as the RAG engine, Telegram bot handler, and translation services.
-
-### Key Roles of Kiro in the Project
-
-- **Project Structure:** Kiro helped maintain a clean and organized directory structure, making it easier to manage source code, static files, templates, and configuration.
-- **Dependency Management:** By leveraging Kiro’s setup, all required Python packages and modules were efficiently managed through the `requirements.txt` file.
-- **Integration:** Kiro facilitated the seamless integration of third-party libraries like `deep_translator` and `python-telegram-bot`, enabling advanced features such as multilingual support and real-time chat interactions.
-- **Extensibility:** The modular nature of Kiro allowed for easy addition of new features and components, such as the RAG engine for retrieval-augmented generation and custom handlers for Telegram interactions.
-
-### Getting Started with Kiro
-
-To replicate or extend this project, simply follow the setup instructions provided in the repository. Make sure to install all dependencies and activate the virtual environment as described.
-
-Kiro’s robust foundation ensures that the project remains maintainable, extensible, and easy to collaborate on.
-
-### Category
-
-I'm submitting to Wildcard/Freestyle category. 
-
-## Contributing
-Pull requests and suggestions are welcome!
+- `main.py` - FastAPI app and endpoints
+- `telegram_handler.py` - Telegram bot flows and health tracking commands
+- `rag_engine.py` - Retrieval and response pipeline
+- `retrieval_chatbot.py` - TF-IDF retrieval support
+- `llm_chatbot.py` - GGUF LLM wrapper (llama.cpp)
+- `templates/`, `static/` - Web UI
+- `web_widget/` - Embeddable widget assets
 
 ## License
 MIT
