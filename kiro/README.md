@@ -31,6 +31,13 @@ AI-powered health assistant with a FastAPI web app, embeddable web widget, Teleg
    # optional
    HUGGINGFACE_API_KEY=your_key_here
    USE_LOCAL_LLM=false
+  LLM_MODEL_PATH=E:/models/mistral.gguf
+  LLM_GPU_LAYERS=35
+  LLM_THREADS=7
+  LLM_N_CTX=2048
+  LLM_N_BATCH=512
+  LLM_MAX_TOKENS=160
+  LLM_TEMPERATURE=0.6
    HOST=0.0.0.0
    PORT=8000
    DEBUG=true

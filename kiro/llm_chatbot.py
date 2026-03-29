@@ -1,6 +1,7 @@
 import pandas as pd
 from llama_cpp import Llama
 import os
+import multiprocessing
 
 class LLMChatbot:
     def __init__(
@@ -8,23 +9,37 @@ class LLMChatbot:
         csv_path='datasets/chatbot_conversations_cleaned.csv',
         model_path='E:/models/mistral.gguf'
     ):
+        self.model_path = os.getenv("LLM_MODEL_PATH", model_path)
+        self.n_ctx = int(os.getenv("LLM_N_CTX", "2048"))
+        self.n_batch = int(os.getenv("LLM_N_BATCH", "512"))
+        cpu_count = multiprocessing.cpu_count() or 4
+        self.n_threads = int(os.getenv("LLM_THREADS", str(max(1, cpu_count - 1))))
+        self.n_gpu_layers = int(os.getenv("LLM_GPU_LAYERS", "35"))
+        self.max_tokens = int(os.getenv("LLM_MAX_TOKENS", "160"))
+        self.temperature = float(os.getenv("LLM_TEMPERATURE", "0.6"))
+
         # ✅ Load dataset
         self.df = pd.read_csv(csv_path)
         self.questions = self.df['Description'].fillna("").tolist()
         self.answers = self.df['Doctor'].fillna("").tolist()
 
         # ✅ Check model exists
-        if not os.path.exists(model_path):
-            raise FileNotFoundError("GGUF model not found at E:/models/mistral.gguf")
+        if not os.path.exists(self.model_path):
+            raise FileNotFoundError(f"GGUF model not found at {self.model_path}")
 
         print("Loading GGUF model (fast + stable)...")
+        print(
+            f"Config -> n_ctx={self.n_ctx}, n_batch={self.n_batch}, n_threads={self.n_threads}, "
+            f"n_gpu_layers={self.n_gpu_layers}, max_tokens={self.max_tokens}"
+        )
 
         # ✅ Load model (optimized for your system)
         self.llm = Llama(
-            model_path=model_path,
-            n_ctx=2048,        # context window
-            n_threads=6,       # adjust based on CPU
-            n_batch=512,
+            model_path=self.model_path,
+            n_ctx=self.n_ctx,
+            n_threads=self.n_threads,
+            n_batch=self.n_batch,
+            n_gpu_layers=self.n_gpu_layers,
             verbose=False
         )
 
@@ -33,8 +48,8 @@ class LLMChatbot:
     def generate_text(self, prompt):
         output = self.llm(
             prompt,
-            max_tokens=256,
-            temperature=0.7,
+            max_tokens=self.max_tokens,
+            temperature=self.temperature,
             stop=["Q:", "\n\nQ:"]
         )
         return output["choices"][0]["text"].strip()
