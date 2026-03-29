@@ -1,3 +1,29 @@
+// Disease prediction logic
+document.addEventListener('DOMContentLoaded', function() {
+    const predictBtn = document.getElementById('predictDiseaseBtn');
+    if (predictBtn) {
+        predictBtn.addEventListener('click', async function() {
+            const symptomsText = document.getElementById('symptomsInput').value;
+            const symptoms = symptomsText.split(',').map(s => s.trim()).filter(s => s);
+            const resultDiv = document.getElementById('predictionResult');
+            resultDiv.textContent = 'Predicting...';
+            try {
+                const response = await fetch('/predict-disease', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symptoms: symptoms })
+                });
+                if (!response.ok) {
+                    throw new Error('Prediction failed');
+                }
+                const data = await response.json();
+                resultDiv.textContent = 'Predicted Disease: ' + data.predicted_disease;
+            } catch (err) {
+                resultDiv.textContent = 'Error: ' + err.message;
+            }
+        });
+    }
+});
 class HealthChatbot {
     constructor() {
         this.messageInput = document.getElementById('messageInput');
@@ -273,6 +299,117 @@ class HealthChatbot {
 document.addEventListener('DOMContentLoaded', () => {
     new HealthChatbot();
 });
+
+// Nearby hospitals (uses browser GPS)
+// ...existing code...
+
+// Nearby hospitals (uses browser GPS)
+document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('nearbyHospitalsBtn');
+    const resultsEl = document.getElementById('hospitalResults');
+
+    if (!btn || !resultsEl) return;
+
+    const renderMessage = (text, isError = false) => {
+        resultsEl.innerHTML = '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        div.className = isError ? 'hospital-item hospital-disclaimer' : 'hospital-item';
+        resultsEl.appendChild(div);
+    };
+
+    const setLoading = (isLoading) => {
+        btn.disabled = isLoading;
+        btn.textContent = isLoading ? 'Finding...' : 'Find Nearby Hospitals';
+    };
+
+    // NEW: tries multiple backend routes so frontend works even if route name differs
+    const fetchHospitals = async (lat, lon) => {
+        const endpoints = [
+            '/hospitals',
+            '/nearby-hospitals',
+            '/nearby_hospitals',
+            '/api/hospitals'
+        ];
+
+        let lastError = null;
+
+        for (const base of endpoints) {
+            const url = `${base}?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`;
+            try {
+                const resp = await fetch(url);
+                if (resp.status === 404) continue; // try next endpoint
+                if (!resp.ok) throw new Error(`HTTP ${resp.status} on ${base}`);
+                return await resp.json();
+            } catch (err) {
+                lastError = err;
+            }
+        }
+
+        throw lastError || new Error('No hospital endpoint found');
+    };
+
+    btn.addEventListener('click', async () => {
+        if (!navigator.geolocation) {
+            renderMessage('Geolocation is not supported in this browser.', true);
+            return;
+        }
+
+        setLoading(true);
+        renderMessage('Requesting location permission...');
+
+        navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+
+                try {
+                    setLoading(true);
+                    renderMessage('Searching hospitals near you...');
+
+                    const data = await fetchHospitals(lat, lon);
+                    const hospitals = data.hospitals || [];
+
+                    resultsEl.innerHTML = '';
+                    if (hospitals.length === 0) {
+                        renderMessage('No hospitals found near your location right now. Please try again later.', true);
+                        return;
+                    }
+
+                    hospitals.forEach((h) => {
+                        const item = document.createElement('div');
+                        item.className = 'hospital-item';
+
+                        const title = document.createElement('div');
+                        title.className = 'hospital-item-title';
+                        title.textContent = h.name || 'Hospital';
+
+                        const meta = document.createElement('div');
+                        meta.className = 'hospital-item-meta';
+                        meta.textContent = h.distance_km != null ? `~${h.distance_km} km away` : '';
+
+                        item.appendChild(title);
+                        item.appendChild(meta);
+                        resultsEl.appendChild(item);
+                    });
+                } catch (err) {
+                    console.error('Hospital lookup failed:', err);
+                    renderMessage('Unable to look up hospitals right now. Please try again later.', true);
+                } finally {
+                    setLoading(false);
+                }
+            },
+            (err) => {
+                console.error('Geolocation error:', err);
+                renderMessage('Location permission denied or unavailable. You can still use the chat for health advice.', true);
+                setLoading(false);
+            },
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+        );
+    });
+});
+
+// ...existing code...
 
 // Add some helpful utility functions
 window.healthChatUtils = {

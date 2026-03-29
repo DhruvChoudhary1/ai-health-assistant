@@ -414,6 +414,70 @@ body {
     color: #667eea;
 }
 
+.hospital-helper-text {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+.hospital-btn {
+    width: 100%;
+    border: none;
+    border-radius: 14px;
+    padding: 12px 14px;
+    background: linear-gradient(135deg, #229ED9 0%, #0088cc 100%);
+    color: white;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 5px 18px rgba(34, 158, 217, 0.20);
+}
+
+.hospital-btn:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 24px rgba(34, 158, 217, 0.30);
+}
+
+.hospital-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.hospital-results {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 40px;
+}
+
+.hospital-item {
+    padding: 10px 12px;
+    border: 1px solid #e1e5e9;
+    border-radius: 12px;
+    background: white;
+}
+
+.hospital-item-title {
+    font-weight: 800;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+
+.hospital-item-meta {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.hospital-disclaimer {
+    font-size: 0.8rem;
+    color: #ef4444;
+    margin-top: 10px;
+    line-height: 1.4;
+}
+
 .tips-list, .safety-list {
     list-style: none;
 }

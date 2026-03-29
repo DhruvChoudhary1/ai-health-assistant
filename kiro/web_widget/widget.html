@@ -85,6 +85,28 @@
             background: rgba(255, 255, 255, 0.2);
         }
 
+        .widget-hospitals-btn {
+            border: none;
+            border-radius: 999px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.18);
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.15s ease, background 0.15s ease;
+        }
+
+        .widget-hospitals-btn:hover {
+            background: rgba(255, 255, 255, 0.28);
+            transform: scale(1.03);
+        }
+
+        .widget-hospitals-btn:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         /* Widget Messages */
         .widget-messages {
             flex: 1;
@@ -249,6 +271,9 @@
             <div class="widget-title">
                 🏥 Health Assistant
             </div>
+            <button class="widget-hospitals-btn" id="widgetHospitalsBtn" type="button" title="Find nearby hospitals">
+                Find Hospitals
+            </button>
             <button class="widget-close" id="widgetClose">
                 ×
             </button>
@@ -310,6 +335,7 @@
                 this.messages = document.getElementById('widgetMessages');
                 this.input = document.getElementById('widgetInput');
                 this.send = document.getElementById('widgetSend');
+                this.hospitalsBtn = document.getElementById('widgetHospitalsBtn');
                 this.language = document.getElementById('widgetLanguage');
                 this.typing = document.getElementById('widgetTyping');
             }
@@ -317,6 +343,9 @@
             initializeEventListeners() {
                 this.toggle.addEventListener('click', () => this.toggleWidget());
                 this.close.addEventListener('click', () => this.closeWidget());
+                if (this.hospitalsBtn) {
+                    this.hospitalsBtn.addEventListener('click', () => this.findNearbyHospitals());
+                }
                 this.send.addEventListener('click', () => this.sendMessage());
                 this.input.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.sendMessage();
@@ -345,6 +374,58 @@
                 this.widget.classList.remove('open');
                 this.toggle.classList.remove('hidden');
                 this.isOpen = false;
+            }
+
+            async findNearbyHospitals() {
+                if (!navigator.geolocation) {
+                    this.addMessage('Geolocation is not supported in this browser.', 'bot');
+                    return;
+                }
+
+                if (this.hospitalsBtn) this.hospitalsBtn.disabled = true;
+                this.showTyping();
+
+                navigator.geolocation.getCurrentPosition(
+                    async (pos) => {
+                        const lat = pos.coords.latitude;
+                        const lon = pos.coords.longitude;
+
+                        try {
+                            const resp = await fetch(
+                                `${this.apiEndpoint}/hospitals?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`
+                            );
+                            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+                            const data = await resp.json();
+                            const hospitals = data.hospitals || [];
+
+                            if (!hospitals.length) {
+                                this.addMessage('No hospitals found near your location right now. Please try again later.', 'bot');
+                            } else {
+                                const lines = ['Nearest hospitals:'];
+                                hospitals.forEach((h, idx) => {
+                                    const dist = h.distance_km != null ? ` (about ${h.distance_km} km)` : '';
+                                    lines.push(`${idx + 1}. ${h.name || 'Hospital'}${dist}`);
+                                });
+                                lines.push('For emergencies, contact local emergency services or go to the nearest ER.');
+                                this.addMessage(lines.join('\n'), 'bot');
+                            }
+                        } catch (error) {
+                            console.error('Hospital lookup failed:', error);
+                            this.addMessage('Unable to look up hospitals right now. Please try again later.', 'bot');
+                        } finally {
+                            this.hideTyping();
+                            if (this.hospitalsBtn) this.hospitalsBtn.disabled = false;
+                        }
+                    },
+                    (err) => {
+                        console.error('Geolocation error:', err);
+                        this.hideTyping();
+                        if (this.hospitalsBtn) this.hospitalsBtn.disabled = false;
+                        this.addMessage('Location permission denied or unavailable. You can still use the chat for health advice.', 'bot');
+                    },
+                    { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+                );
             }
             
             async sendMessage() {
